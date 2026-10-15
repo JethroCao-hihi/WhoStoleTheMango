@@ -14,7 +14,6 @@ GameObject:
   - component: {fileID: 9008909528063142682}
   - component: {fileID: 5631138273447241729}
   - component: {fileID: 815230443179179084}
-  - component: {fileID: -3751827312236186540}
   - component: {fileID: -4895544286250139034}
   m_Layer: 0
   m_Name: Mango
@@ -135,7 +134,6 @@ MonoBehaviour:
   NestedObjects: []
   NetworkedBehaviours:
   - {fileID: 815230443179179084}
-  - {fileID: -3751827312236186540}
   - {fileID: -4895544286250139034}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &815230443179179084
@@ -179,18 +177,6 @@ MonoBehaviour:
     MinImpactfulCollisionAlignment: 0.3
     ImpactStartCorrectionTime: 0.1
     ImpactCorrectionTimeComplete: 0.3
---- !u!114 &-3751827312236186540
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2475649796466724818}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9a60aee160e9fe54a89d140d40de5928, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MangoDebug
 --- !u!114 &-4895544286250139034
 MonoBehaviour:
   m_ObjectHideFlags: 0

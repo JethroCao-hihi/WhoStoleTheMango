@@ -23,6 +23,8 @@ public class PhotonConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
     private bool isConnecting;
     private bool runnerShuttingDown;
     private bool mangoesSpawned;
+    private bool pendingInteract;
+    private bool pendingHarvest;
     private static PhotonConnectionTest instance;
     private const string RoomName = "MangoConnectionTest";
 
@@ -50,6 +52,19 @@ public class PhotonConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
         }
 
         DontDestroyOnLoad(gameObject);
+    }
+
+    private void Update()
+    {
+        if (Keyboard.current == null)
+            return;
+
+        // Giữ lại thao tác nhấn nhanh cho đến khi Fusion nhận input.
+        if (Keyboard.current.eKey.wasPressedThisFrame)
+            pendingInteract = true;
+
+        if (Keyboard.current.fKey.wasPressedThisFrame)
+            pendingHarvest = true;
     }
 
     private static readonly Vector3[] MangoPositions =
@@ -311,77 +326,89 @@ public class PhotonConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
     {
         if (mangoesSpawned)
         {
-            Debug.LogWarning("[Mango] Mangoes already spawned this session.");
+            Debug.LogWarning("[Mango] Mangoes already spawned.");
             return;
         }
 
         if (runner == null || !runner.IsRunning || !runner.IsServer)
         {
-            Debug.LogError(
-                "[Mango] Runner is not running or is not the server."
-            );
+            Debug.LogError("[Mango] Runner chưa sẵn sàng hoặc không phải Host.");
             return;
         }
 
         if (mangoPrefab == null)
         {
+            Debug.LogError("[Mango] Chưa gán Mango Prefab trong Inspector!");
+            return;
+        }
+
+        MangoTree[] trees =
+            FindObjectsByType<MangoTree>(FindObjectsSortMode.None);
+
+        MangoTree tree = null;
+
+        foreach (MangoTree candidate in trees)
+        {
+            if (candidate != null &&
+                candidate.HasClimbPoints &&
+                candidate.MangoPoints != null &&
+                candidate.MangoPoints.Length > 0)
+            {
+                tree = candidate;
+                break;
+            }
+        }
+
+        if (tree == null)
+        {
             Debug.LogError(
-                "[Mango] Chua gan Mango Prefab trong Inspector!"
+                "[Mango] Không tìm thấy MangoTree có ClimbStartPoint, " +
+                "ClimbEndPoint và MangoPoints."
             );
             return;
         }
 
         spawnedMangoes.Clear();
 
-        Debug.Log(
-            $"[Mango] Spawn begins | RunnerState={runner.State} | " +
-            $"Scene={SceneManager.GetActiveScene().name}"
-        );
-
-        foreach (Vector3 position in MangoPositions)
+        foreach (Transform point in tree.MangoPoints)
         {
-            try
+            if (point == null)
             {
-                NetworkObject mango = runner.Spawn(
-                    mangoPrefab,
-                    position,
-                    Quaternion.identity
-                );
-
-                if (mango == null)
-                {
-                    Debug.LogError(
-                        $"[Mango] Spawn returned null at {position}"
-                    );
-                    continue;
-                }
-
-                spawnedMangoes.Add(mango);
-
-                Debug.Log(
-                    $"[Mango] Spawn OK | Name={mango.name} | " +
-                    $"Valid={mango.IsValid} | " +
-                    $"Active={mango.gameObject.activeInHierarchy} | " +
-                    $"Position={mango.transform.position} | " +
-                    $"Scene={mango.gameObject.scene.name}"
-                );
+                Debug.LogWarning("[Mango] Có MangoPoint chưa được gán.");
+                continue;
             }
-            catch (Exception e)
+
+            NetworkObject mango = runner.Spawn(
+                mangoPrefab,
+                point.position,
+                Quaternion.identity
+            );
+
+            if (mango == null)
             {
                 Debug.LogError(
-                    $"[Mango] Spawn exception at {position}: {e}"
+                    $"[Mango] Spawn thất bại tại {point.position}"
                 );
+                continue;
             }
+
+            spawnedMangoes.Add(mango);
+
+            Debug.Log(
+                $"[Mango] Spawned at tree | " +
+                $"Point={point.name} | Position={point.position}"
+            );
         }
 
         mangoesSpawned = spawnedMangoes.Count > 0;
 
         Debug.Log(
-            $"[Mango] Spawn finished: " +
-            $"{spawnedMangoes.Count}/{MangoPositions.Length}"
+            $"[Mango] Spawn hoàn tất: {spawnedMangoes.Count}/" +
+            $"{tree.MangoPoints.Length}"
         );
 
-        StartCoroutine(VerifyMangoes(spawnedMangoes));
+        if (spawnedMangoes.Count > 0)
+            StartCoroutine(VerifyMangoes(spawnedMangoes));
     }
 
     private IEnumerator VerifyMangoes(List<NetworkObject> mangoes)
@@ -474,12 +501,22 @@ public class PhotonConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
                 move.y += 1f;
         }
 
+        NetworkButtons buttons = default;
+
+        buttons.Set(PlayerInputButton.Interact, pendingInteract);
+        buttons.Set(PlayerInputButton.Harvest, pendingHarvest);
+
         input.Set(new NetworkPlayerInput
         {
-            Move = Vector2.ClampMagnitude(move, 1f)
+            Move = Vector2.ClampMagnitude(move, 1f),
+            Buttons = buttons,
+            CameraYaw = LocalPlayerCameraFollow.CurrentYaw
         });
-    }
 
+        // Reset sau khi chuyển input vào Fusion.
+        pendingInteract = false;
+        pendingHarvest = false;
+    }
     public void OnInputMissing(
         NetworkRunner currentRunner,
         PlayerRef player,
@@ -491,11 +528,12 @@ public class PhotonConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
     NetworkRunner currentRunner,
     ShutdownReason shutdownReason)
     {
-        Debug.LogError(
-            $"[DIAGNOSTIC] RUNNER SHUTDOWN | " +
-            $"Reason={shutdownReason} | " +
-            $"Time={Time.time:F2} | " +
-            $"Frame={Time.frameCount}",
+        // Reason=Ok là đóng bình thường, không cần báo lỗi.
+        if (shutdownReason == ShutdownReason.Ok)
+            return;
+
+        Debug.LogWarning(
+            $"[Photon] Runner shutdown: {shutdownReason}",
             this
         );
     }

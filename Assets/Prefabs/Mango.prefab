@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: 5631138273447241729}
   - component: {fileID: 815230443179179084}
   - component: {fileID: -4895544286250139034}
+  - component: {fileID: 9075430780983061845}
   m_Layer: 0
   m_Name: Mango
   m_TagString: Untagged
@@ -135,6 +136,7 @@ MonoBehaviour:
   NetworkedBehaviours:
   - {fileID: 815230443179179084}
   - {fileID: -4895544286250139034}
+  - {fileID: 9075430780983061845}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &815230443179179084
 MonoBehaviour:
@@ -189,3 +191,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 92208d7da53dc834d9e9e8f396cc99ad, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkMango
+--- !u!114 &9075430780983061845
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2475649796466724818}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd1020dba4f98454aa43020a8c5bb105, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NetworkDroppedMangoMarker
+  _IsDropped:
+    RawValue: 0

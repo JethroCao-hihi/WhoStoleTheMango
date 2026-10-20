@@ -1,54 +1,49 @@
-
 using UnityEngine;
 
+/// <summary>
+/// Scene component for a mango tree. Assign climb points and fruit spawn points
+/// in the Inspector. This class is intentionally separate from
+/// NetworkDroppedMangoMarker, which belongs on the network mango prefab.
+/// </summary>
 public class MangoTree : MonoBehaviour
 {
-    [Header("Climbing Points")]
-    [SerializeField] private Transform climbStartPoint;
-    [SerializeField] private Transform climbEndPoint;
+    [Header("Climb Points")]
+    public Transform ClimbStartPoint;
+    public Transform ClimbEndPoint;
 
-    [Header("Mango Points")]
-    [SerializeField] private Transform[] mangoPoints;
+    [Header("Mango Spawn Points")]
+    public Transform[] MangoPoints;
 
-    public Transform ClimbStartPoint => climbStartPoint;
-    public Transform ClimbEndPoint => climbEndPoint;
-    public Transform[] MangoPoints => mangoPoints;
-
-    public bool HasClimbPoints =>
-        climbStartPoint != null &&
-        climbEndPoint != null;
+    public bool HasClimbPoints => ClimbStartPoint != null && ClimbEndPoint != null;
 
     private void OnDrawGizmos()
     {
-        if (climbStartPoint != null)
+        if (ClimbStartPoint != null)
         {
             Gizmos.color = Color.green;
-            Gizmos.DrawSphere(climbStartPoint.position, 0.15f);
+            Gizmos.DrawSphere(ClimbStartPoint.position, 0.12f);
         }
 
-        if (climbEndPoint != null)
+        if (ClimbEndPoint != null)
         {
             Gizmos.color = Color.cyan;
-            Gizmos.DrawSphere(climbEndPoint.position, 0.15f);
-
-            if (climbStartPoint != null)
-            {
-                Gizmos.DrawLine(
-                    climbStartPoint.position,
-                    climbEndPoint.position
-                );
-            }
+            Gizmos.DrawSphere(ClimbEndPoint.position, 0.12f);
         }
 
-        if (mangoPoints == null)
+        if (ClimbStartPoint != null && ClimbEndPoint != null)
+        {
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawLine(ClimbStartPoint.position, ClimbEndPoint.position);
+        }
+
+        if (MangoPoints == null)
             return;
 
-        Gizmos.color = Color.yellow;
-
-        foreach (Transform point in mangoPoints)
+        Gizmos.color = new Color(1f, 0.6f, 0f, 1f);
+        foreach (Transform point in MangoPoints)
         {
             if (point != null)
-                Gizmos.DrawSphere(point.position, 0.12f);
+                Gizmos.DrawSphere(point.position, 0.08f);
         }
     }
 }

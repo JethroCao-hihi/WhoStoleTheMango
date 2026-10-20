@@ -3,7 +3,6 @@ using Fusion.Sockets;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -20,10 +19,16 @@ public class PhotonConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
     private string status = "Chua ket noi";
     private string lastError = "";
     private bool isConnecting;
-    private bool runnerShuttingDown;
     private bool mangoesSpawned;
     private bool pendingInteract;
     private bool pendingHarvest;
+    private bool pendingJump;
+    private bool pendingDropMango;
+    private bool pendingDebugGiveMango;
+    private Vector2 cachedMove;
+    private bool sprintHeld;
+    private bool crouchHeld;
+    private bool rescueHeld;
     private static PhotonConnectionTest instance;
     private const string RoomName = "MangoConnectionTest";
 
@@ -55,25 +60,56 @@ public class PhotonConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
 
     private void Update()
     {
-        if (Keyboard.current == null)
+        // Poll the Input System on Unity's frame update, then snapshot it for Fusion ticks.
+        // This avoids sampling one-frame key events only inside a network simulation callback.
+        Keyboard keyboard = Keyboard.current;
+        if (!Application.isFocused || keyboard == null)
+        {
+            cachedMove = Vector2.zero;
+            sprintHeld = false;
+            crouchHeld = false;
+            rescueHeld = false;
+            pendingInteract = false;
+            pendingHarvest = false;
+            pendingJump = false;
+            pendingDropMango = false;
+            pendingDebugGiveMango = false;
             return;
+        }
 
-        // Giữ lại thao tác nhấn nhanh cho đến khi Fusion nhận input.
-        if (Keyboard.current.eKey.wasPressedThisFrame)
-            pendingInteract = true;
+        cachedMove = Vector2.zero;
+        if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) cachedMove.x -= 1f;
+        if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) cachedMove.x += 1f;
+        if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed) cachedMove.y -= 1f;
+        if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed) cachedMove.y += 1f;
+        cachedMove = Vector2.ClampMagnitude(cachedMove, 1f);
 
-        if (Keyboard.current.fKey.wasPressedThisFrame)
-            pendingHarvest = true;
+        if (keyboard.eKey.wasPressedThisFrame) pendingInteract = true;
+        if (keyboard.fKey.wasPressedThisFrame) pendingHarvest = true;
+        if (keyboard.spaceKey.wasPressedThisFrame)
+        {
+            pendingJump = true;
+            Debug.Log("[Input Debug] Space pressed; queued for Fusion.");
+        }
+        if (keyboard.qKey.wasPressedThisFrame)
+        {
+            pendingDropMango = true;
+            Debug.Log("[Input Debug] Q pressed; queued for Fusion.");
+        }
+#if UNITY_EDITOR
+        if (keyboard.gKey.wasPressedThisFrame)
+        {
+            pendingDebugGiveMango = true;
+            Debug.Log("[Input Debug] G pressed; debug mango grant queued for Fusion.");
+        }
+#endif
+
+        sprintHeld = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
+        crouchHeld = keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed;
+        rescueHeld = keyboard.rKey.isPressed;
+        if (keyboard.leftCtrlKey.wasPressedThisFrame || keyboard.rightCtrlKey.wasPressedThisFrame)
+            Debug.Log("[Input Debug] Ctrl pressed; crouch hold state updated.");
     }
-
-    private static readonly Vector3[] MangoPositions =
-    {
-        new Vector3(-8f, 0.5f, -8f),
-        new Vector3( 8f, 0.5f, -8f),
-        new Vector3(-8f, 0.5f,  8f),
-        new Vector3( 8f, 0.5f,  8f),
-        new Vector3( 0f, 0.5f,  10f)
-    };
 
     // =========================================================
     // CONNECT
@@ -99,7 +135,6 @@ public class PhotonConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
 
             mangoesSpawned = false;
             spawnedMangoes.Clear();
-            runnerShuttingDown = false;
 
             runner = gameObject.AddComponent<NetworkRunner>();
             runner.ProvideInput = true;
@@ -300,6 +335,7 @@ public class PhotonConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
 
         if (playerObject != null)
         {
+            // This feature branch implements thief characters only. No Orchard Owner role is assigned here.
             Debug.Log(
                 $"[Photon] Spawned {player} | " +
                 $"Position={spawnPosition} | " +
@@ -479,49 +515,38 @@ public class PhotonConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
 
     public void OnInput(NetworkRunner currentRunner, NetworkInput input)
     {
-        Vector2 move = Vector2.zero;
-
-        if (Keyboard.current != null)
-        {
-            if (Keyboard.current.aKey.isPressed ||
-                Keyboard.current.leftArrowKey.isPressed)
-                move.x -= 1f;
-
-            if (Keyboard.current.dKey.isPressed ||
-                Keyboard.current.rightArrowKey.isPressed)
-                move.x += 1f;
-
-            if (Keyboard.current.sKey.isPressed ||
-                Keyboard.current.downArrowKey.isPressed)
-                move.y -= 1f;
-
-            if (Keyboard.current.wKey.isPressed ||
-                Keyboard.current.upArrowKey.isPressed)
-                move.y += 1f;
-        }
-
         NetworkButtons buttons = default;
-
         buttons.Set(PlayerInputButton.Interact, pendingInteract);
         buttons.Set(PlayerInputButton.Harvest, pendingHarvest);
-
-        // Shift là input giữ nút, nên gửi trạng thái đang giữ trực tiếp vào Fusion.
-        bool sprintHeld = Keyboard.current != null &&
-            (Keyboard.current.leftShiftKey.isPressed ||
-             Keyboard.current.rightShiftKey.isPressed);
+        buttons.Set(PlayerInputButton.Jump, pendingJump);
+        buttons.Set(PlayerInputButton.DropMango, pendingDropMango);
         buttons.Set(PlayerInputButton.Sprint, sprintHeld);
+        buttons.Set(PlayerInputButton.Crouch, crouchHeld);
+        buttons.Set(PlayerInputButton.Rescue, rescueHeld);
+        buttons.Set(PlayerInputButton.DebugGiveMango, pendingDebugGiveMango);
 
         input.Set(new NetworkPlayerInput
         {
-            Move = Vector2.ClampMagnitude(move, 1f),
+            Move = cachedMove,
             Buttons = buttons,
             CameraYaw = LocalPlayerCameraFollow.CurrentYaw
         });
 
-        // Reset sau khi chuyển input vào Fusion.
+        if (pendingJump)
+            Debug.Log("[Input Debug] Jump button sent to Fusion input.");
+        if (pendingDropMango)
+            Debug.Log("[Input Debug] DropMango button sent to Fusion input.");
+        if (pendingDebugGiveMango)
+            Debug.Log("[Input Debug] DebugGiveMango button sent to Fusion input.");
+
+        // Press events persist until at least one Fusion input tick receives them.
         pendingInteract = false;
         pendingHarvest = false;
+        pendingJump = false;
+        pendingDropMango = false;
+        pendingDebugGiveMango = false;
     }
+
     public void OnInputMissing(
         NetworkRunner currentRunner,
         PlayerRef player,

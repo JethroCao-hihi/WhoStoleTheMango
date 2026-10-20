@@ -18,6 +18,7 @@ GameObject:
   - component: {fileID: 6016242023910867570}
   - component: {fileID: 2672498010739759600}
   - component: {fileID: 6454598230376891208}
+  - component: {fileID: 6949410136340256765}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -142,6 +143,7 @@ MonoBehaviour:
   - {fileID: 6016242023910867570}
   - {fileID: 2672498010739759600}
   - {fileID: 6454598230376891208}
+  - {fileID: 6949410136340256765}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &5157055137683620896
 MonoBehaviour:
@@ -231,17 +233,57 @@ MonoBehaviour:
   staminaDrainPerSecond: 20
   staminaRecoveryPerSecond: 15
   minimumStaminaToStartRun: 10
+  jumpVerticalSpeed: 7.5
+  jumpHorizontalSpeed: 6
+  jumpStaminaCost: 25
+  jumpCooldown: 5
+  crouchSpeedMultiplier: 0.5
+  crouchedHeight: 1.2
+  waterMoveMultiplier: 0.45
+  rescueRadius: 2
+  rescueDuration: 5
+  rescueProtectionDuration: 3
   climbSpeed: 3
   climbInteractRadius: 2
   climbArrivalThreshold: 0.05
   harvestDuration: 2.5
   harvestRadius: 3
+  droppedMangoPrefab: {fileID: 5631138273447241729, guid: 48e10db4c1ddfd940ae4ed8c02d5e2c5, type: 3}
+  droppedMangoPickupRadius: 1.6
+  droppedMangoForwardOffset: 0.8
+  walkFootstepInterval: 0.7
+  runFootstepInterval: 0.45
+  crouchFootstepInterval: 1
+  walkNoiseRadius: 5
+  crouchNoiseRadius: 2
+  runNoiseRadius: 10
+  noisySurfaceRunRadius: 15
+  harvestNoiseRadius: 10
+  splashNoiseRadius: 20
+  noisySurfaceLayers:
+    serializedVersion: 2
+    m_Bits: 0
   _IsHarvesting:
     RawValue: 0
   _HarvestProgress: 0
   _Stamina: 0
   _IsSprinting:
     RawValue: 0
+  _IsJumping:
+    RawValue: 0
+  _JumpCooldownRemaining: 0
+  _IsCrouching:
+    RawValue: 0
+  _IsInWater:
+    RawValue: 0
+  _IsHiddenInCover:
+    RawValue: 0
+  _IsCaptured:
+    RawValue: 0
+  _IsRescuing:
+    RawValue: 0
+  _InteractionProgress: 0
+  _RescueProtectionRemaining: 0
 --- !u!114 &2672498010739759600
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -280,3 +322,26 @@ MonoBehaviour:
   normalBackgroundColor: {r: 0.06, g: 0.07, b: 0.08, a: 0.88}
   emptyBackgroundColor: {r: 0.32, g: 0.035, b: 0.025, a: 0.95}
   fillSmoothing: 8
+--- !u!114 &6949410136340256765
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3493781938159906001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ac0a0fc32f7b0343ab0a071a1ab5b39, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NetworkPlayerSoundState
+  walkClip: {fileID: 0}
+  runClip: {fileID: 0}
+  crouchClip: {fileID: 0}
+  harvestClip: {fileID: 0}
+  splashClip: {fileID: 0}
+  jumpClip: {fileID: 0}
+  climbClip: {fileID: 0}
+  dropClip: {fileID: 0}
+  captureClip: {fileID: 0}
+  _NoiseSequence: 0
+  _LastNoiseTypeCode: 0

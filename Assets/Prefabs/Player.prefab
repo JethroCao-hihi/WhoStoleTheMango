@@ -17,6 +17,7 @@ GameObject:
   - component: {fileID: 7084323951230607384}
   - component: {fileID: 6016242023910867570}
   - component: {fileID: 2672498010739759600}
+  - component: {fileID: 6454598230376891208}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -140,6 +141,7 @@ MonoBehaviour:
   - {fileID: 5157055137683620896}
   - {fileID: 6016242023910867570}
   - {fileID: 2672498010739759600}
+  - {fileID: 6454598230376891208}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &5157055137683620896
 MonoBehaviour:
@@ -219,9 +221,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 991ad1384f791d141a9db93ccd5ba828, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkPlayerController
-  moveSpeed: 5
+  walkSpeed: 3.5
+  runSpeed: 6
+  mediumLoadRunSpeed: 5.4
+  fullLoadRunSpeed: 4.8
   rotationSpeed: 12
   gravity: -20
+  maxStamina: 100
+  staminaDrainPerSecond: 20
+  staminaRecoveryPerSecond: 15
+  minimumStaminaToStartRun: 10
+  climbSpeed: 3
+  climbInteractRadius: 2
+  climbArrivalThreshold: 0.05
+  harvestDuration: 2.5
+  harvestRadius: 3
+  _IsHarvesting:
+    RawValue: 0
+  _HarvestProgress: 0
+  _Stamina: 0
+  _IsSprinting:
+    RawValue: 0
 --- !u!114 &2672498010739759600
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -235,3 +255,28 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::NetworkPlayerData
   _MangoCount: 0
+  _DepositedMangoCount: 0
+--- !u!114 &6454598230376891208
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3493781938159906001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d77656306248c4c4c897dee03fb72887, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerStaminaBar
+  heightAbovePlayer: 2.25
+  canvasPixelSize: {x: 180, y: 22}
+  worldScale: 0.006
+  showOnlyForLocalPlayer: 1
+  warningThreshold: 0.5
+  criticalThreshold: 0.25
+  highStaminaColor: {r: 0.2, g: 0.88, b: 0.28, a: 1}
+  mediumStaminaColor: {r: 1, g: 0.78, b: 0.12, a: 1}
+  lowStaminaColor: {r: 1, g: 0.2, b: 0.16, a: 1}
+  normalBackgroundColor: {r: 0.06, g: 0.07, b: 0.08, a: 0.88}
+  emptyBackgroundColor: {r: 0.32, g: 0.035, b: 0.025, a: 0.95}
+  fillSmoothing: 8

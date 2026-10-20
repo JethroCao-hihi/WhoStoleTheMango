@@ -3,8 +3,9 @@ using UnityEngine;
 
 public enum PlayerInputButton
 {
-    Interact = 0, // E: leo lên / leo xuống
-    Harvest = 1   // F: hái xoài
+    Interact = 0, // E: leo len / leo xuong
+    Harvest = 1,  // F: hai xoai
+    Sprint = 2    // Shift: chay nhanh (giu nut)
 }
 
 public struct NetworkPlayerInput : INetworkInput

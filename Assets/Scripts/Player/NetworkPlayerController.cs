@@ -4,10 +4,19 @@ using UnityEngine;
 [RequireComponent(typeof(CharacterController))]
 public class NetworkPlayerController : NetworkBehaviour
 {
-    [Header("Movement")]
-    [SerializeField] private float moveSpeed = 5f;
-    [SerializeField] private float rotationSpeed = 12f;
+    [Header("Movement - Thief GDD")]
+    [SerializeField, Min(0f)] private float walkSpeed = 3.5f;
+    [SerializeField, Min(0f)] private float runSpeed = 6f;
+    [SerializeField, Min(0f)] private float mediumLoadRunSpeed = 5.4f;
+    [SerializeField, Min(0f)] private float fullLoadRunSpeed = 4.8f;
+    [SerializeField, Min(0f)] private float rotationSpeed = 12f;
     [SerializeField] private float gravity = -20f;
+
+    [Header("Stamina - Initial balance values")]
+    [SerializeField, Min(1f)] private float maxStamina = 100f;
+    [SerializeField, Min(0f)] private float staminaDrainPerSecond = 20f;
+    [SerializeField, Min(0f)] private float staminaRecoveryPerSecond = 15f;
+    [SerializeField, Min(0f)] private float minimumStaminaToStartRun = 10f;
 
     [Header("Climbing")]
     [SerializeField] private float climbSpeed = 3f;
@@ -41,6 +50,12 @@ public class NetworkPlayerController : NetworkBehaviour
     [Networked]
     public float HarvestProgress { get; private set; }
 
+    [Networked]
+    public float Stamina { get; private set; }
+
+    [Networked]
+    public NetworkBool IsSprinting { get; private set; }
+
     private CharacterController characterController;
     private float verticalVelocity;
     private NetworkMango currentMangoTarget;
@@ -49,6 +64,8 @@ public class NetworkPlayerController : NetworkBehaviour
     public bool IsClimbingForHUD => IsClimbing;
     public bool IsOnTreeForHUD => IsOnTree;
     public bool IsHarvestingForHUD => IsHarvesting;
+    public bool IsSprintingForHUD => IsSprinting;
+    public float MaxStaminaForHUD => maxStamina;
 
     private void Awake()
     {
@@ -57,6 +74,12 @@ public class NetworkPlayerController : NetworkBehaviour
 
     public override void Spawned()
     {
+        if (Object.HasStateAuthority)
+        {
+            Stamina = maxStamina;
+            IsSprinting = false;
+        }
+
         ApplyCharacterControllerState();
 
         Debug.Log(
@@ -72,11 +95,10 @@ public class NetworkPlayerController : NetworkBehaviour
             return;
 
         bool hasInput = GetInput(out NetworkPlayerInput input);
-
         bool interactPressed = false;
         bool harvestPressed = false;
 
-        // Phát hiện thao tác vừa nhấn bằng trạng thái nút của Fusion.
+        // E/F la thao tac nhan; Shift la trang thai giu nut.
         if (hasInput)
         {
             NetworkButtons pressedButtons =
@@ -91,14 +113,22 @@ public class NetworkPlayerController : NetworkBehaviour
             PreviousButtons = input.Buttons;
         }
 
-        // Luôn tiếp tục chuyển động leo dù tick hiện tại không có input.
+        bool hasMoveInput = hasInput && input.Move.sqrMagnitude > 0.001f;
+        bool sprintRequested = hasMoveInput &&
+            input.Buttons.IsSet(PlayerInputButton.Sprint) &&
+            !IsClimbing && !IsOnTree && !IsHarvesting;
+
+        // Host/StateAuthority tinh the luc va trang thai chay cho ca mang.
+        UpdateStamina(sprintRequested);
+
+        // Leo cay tiep tuc chay ke ca tick hien tai khong co input.
         if (IsClimbing)
         {
             ProcessClimbing();
             return;
         }
 
-        // Tiến trình hái tiếp tục chạy, không khởi động lại bởi input mới.
+        // Tien trinh hai tiep tuc chay va nhan vat dung yen trong luc hai.
         if (IsHarvesting)
         {
             ProcessHarvest();
@@ -108,41 +138,44 @@ public class NetworkPlayerController : NetworkBehaviour
         if (!hasInput)
             return;
 
-        // E: chỉ leo cây hoặc leo xuống.
+        // E: leo len cay hoac leo xuong.
         if (interactPressed)
         {
             HandleClimbInteraction();
 
             if (IsClimbing || IsOnTree)
             {
+                IsSprinting = false;
                 ApplyCharacterControllerState();
                 return;
             }
         }
 
-        // F: chỉ bắt đầu hái khi đang trên cây.
+        // F: bat dau hai khi dang tren cay.
         if (harvestPressed && IsOnTree)
         {
             TryStartHarvest();
 
             if (IsHarvesting)
+            {
+                IsSprinting = false;
                 return;
+            }
         }
 
-        // Không chạy tự do khi đang ẩn trên cây.
+        // Khong di chuyen tu do khi dang an tren cay.
         if (IsOnTree)
             return;
 
-        // WASD di chuyển theo hướng camera.
+        // WASD di chuyen theo huong camera.
         Quaternion cameraRotation =
             Quaternion.Euler(0f, input.CameraYaw, 0f);
 
-        Vector3 moveDirection =
-            cameraRotation * new Vector3(
-                input.Move.x,
-                0f,
-                input.Move.y
-            );
+        Vector3 moveDirection = cameraRotation * new Vector3(
+            input.Move.x,
+            0f,
+            input.Move.y
+        );
 
         moveDirection = Vector3.ClampMagnitude(moveDirection, 1f);
 
@@ -161,14 +194,53 @@ public class NetworkPlayerController : NetworkBehaviour
         if (characterController.isGrounded && verticalVelocity < 0f)
             verticalVelocity = -2f;
 
-        verticalVelocity += gravity * Runner.DeltaTime;
+        float currentMoveSpeed = IsSprinting ? GetRunSpeedByMangoLoad() : walkSpeed;
 
         Vector3 velocity =
-            moveDirection * moveSpeed +
+            moveDirection * currentMoveSpeed +
             Vector3.up * verticalVelocity;
 
         characterController.Move(velocity * Runner.DeltaTime);
     }
+
+    private void UpdateStamina(bool sprintRequested)
+    {
+        bool canContinueOrStartSprint = sprintRequested &&
+            (IsSprinting || Stamina >= minimumStaminaToStartRun);
+
+        if (canContinueOrStartSprint)
+        {
+            Stamina = Mathf.Max(
+                0f,
+                Stamina - staminaDrainPerSecond * Runner.DeltaTime
+            );
+
+            IsSprinting = Stamina > 0.001f;
+        }
+        else
+        {
+            IsSprinting = false;
+            Stamina = Mathf.Min(
+                maxStamina,
+                Stamina + staminaRecoveryPerSecond * Runner.DeltaTime
+            );
+        }
+    }
+
+    private float GetRunSpeedByMangoLoad()
+    {
+        NetworkPlayerData playerData = GetComponent<NetworkPlayerData>();
+        int mangoCount = playerData != null ? playerData.MangoCount : 0;
+
+        if (mangoCount >= NetworkPlayerData.MaxMangoCount)
+            return fullLoadRunSpeed;
+
+        if (mangoCount >= 3)
+            return mediumLoadRunSpeed;
+
+        return runSpeed;
+    }
+
     private void HandleClimbInteraction()
     {
         // Nếu đã ở trên cây, E sẽ bắt đầu leo xuống.

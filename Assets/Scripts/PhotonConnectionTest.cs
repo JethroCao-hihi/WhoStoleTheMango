@@ -1,4 +1,3 @@
-
 using Fusion;
 using Fusion.Sockets;
 using System;
@@ -505,6 +504,12 @@ public class PhotonConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
 
         buttons.Set(PlayerInputButton.Interact, pendingInteract);
         buttons.Set(PlayerInputButton.Harvest, pendingHarvest);
+
+        // Shift là input giữ nút, nên gửi trạng thái đang giữ trực tiếp vào Fusion.
+        bool sprintHeld = Keyboard.current != null &&
+            (Keyboard.current.leftShiftKey.isPressed ||
+             Keyboard.current.rightShiftKey.isPressed);
+        buttons.Set(PlayerInputButton.Sprint, sprintHeld);
 
         input.Set(new NetworkPlayerInput
         {

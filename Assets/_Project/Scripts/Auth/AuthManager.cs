@@ -117,6 +117,9 @@ namespace MangoHeist.Auth
             }
         }
 
+        /// <summary>
+        /// Đăng ký tài khoản đầy đủ (với Email và Xác nhận mật khẩu từ Form UI)
+        /// </summary>
         public void Register(string username, string email, string password, string confirmPassword, Action<bool, string> callback)
         {
             EnsureInitialized();
@@ -177,6 +180,14 @@ namespace MangoHeist.Auth
             SyncWithSaveManager(newAccount);
             OnLoginSuccess?.Invoke(newAccount);
             callback?.Invoke(true, "Đăng ký thành công!");
+        }
+
+        /// <summary>
+        /// Quá tải Register rút gọn (hỗ trợ các bài test và API gọi nhanh)
+        /// </summary>
+        public void Register(string username, string password, Action<bool, string> callback)
+        {
+            Register(username, "", password, password, callback);
         }
 
         public void Login(string username, string password, Action<bool, string> callback)

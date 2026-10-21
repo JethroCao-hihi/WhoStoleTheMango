@@ -7,26 +7,38 @@ using UnityEngine.UI;
 
 namespace MangoHeist.UI
 {
-    /// <summary>
-    /// Điều khiển toàn bộ giao diện Màn hình Đăng nhập (Login Scene):
-    /// - Nhận input tên tài khoản / mật khẩu
-    /// - Xử lý sự kiện bấm nút Đăng nhập / Đăng ký / Chơi Khách
-    /// - Hiển thị thông báo trạng thái màu sắc
-    /// - Hiển thị bảng Profile người chơi (Level, Xu, Map đã mở) sau khi đăng nhập thành công.
-    /// </summary>
     public class LoginUIController : MonoBehaviour
     {
-        [Header("=== KHUNG ĐĂNG NHẬP (LOGIN PANEL) ===")]
-        [SerializeField] private GameObject _loginPanel;
-        [SerializeField] private TMP_InputField _usernameInput;
-        [SerializeField] private TMP_InputField _passwordInput;
-        [SerializeField] private Button _loginButton;
-        [SerializeField] private Button _registerButton;
-        [SerializeField] private Button _guestButton;
-        [SerializeField] private TextMeshProUGUI _statusText;
-
-        [Header("=== KHUNG HỒ SƠ NGƯỜI CHƠI (PROFILE PANEL) ===")]
+        [Header("=== KHUNG CHÍNH (PANELS) ===")]
+        [SerializeField] private GameObject _mainCardPanel;
+        [SerializeField] private GameObject _loginContainer;
+        [SerializeField] private GameObject _registerContainer;
         [SerializeField] private GameObject _profilePanel;
+
+        [Header("=== FORM ĐĂNG NHẬP ===")]
+        [SerializeField] private TMP_InputField _loginUsernameInput;
+        [SerializeField] private TMP_InputField _loginPasswordInput;
+        [SerializeField] private Button _loginSubmitButton;
+        [SerializeField] private Button _switchToRegisterButton;
+        [SerializeField] private Button _guestButton;
+        [SerializeField] private Button _toggleLoginPasswordButton;
+        [SerializeField] private TextMeshProUGUI _toggleLoginEyeIcon;
+
+        [Header("=== FORM ĐĂNG KÝ ===")]
+        [SerializeField] private TMP_InputField _regUsernameInput;
+        [SerializeField] private TMP_InputField _regEmailInput;
+        [SerializeField] private TMP_InputField _regPasswordInput;
+        [SerializeField] private TMP_InputField _regConfirmPasswordInput;
+        [SerializeField] private Button _regSubmitButton;
+        [SerializeField] private Button _switchToLoginButton;
+        [SerializeField] private Button _toggleRegPasswordButton;
+        [SerializeField] private TextMeshProUGUI _toggleRegEyeIcon;
+
+        [Header("=== THÔNG BÁO LỖI / TOAST POPUP ===")]
+        [SerializeField] private GameObject _toastPopup;
+        [SerializeField] private TextMeshProUGUI _toastMessageText;
+
+        [Header("=== HỒ SƠ SAU KHI ĐĂNG NHẬP ===")]
         [SerializeField] private TextMeshProUGUI _welcomeText;
         [SerializeField] private TextMeshProUGUI _levelText;
         [SerializeField] private TextMeshProUGUI _coinsText;
@@ -34,21 +46,18 @@ namespace MangoHeist.UI
         [SerializeField] private Button _playOnlineButton;
         [SerializeField] private Button _logoutButton;
 
+        private Coroutine _toastCoroutine;
+        private bool _isLoginPasswordVisible = false;
+        private bool _isRegPasswordVisible = false;
+
         private void Awake()
         {
-            // Tự động sửa lỗi xung đột giữa New Input System và StandaloneInputModule
             var standalone = FindAnyObjectByType<UnityEngine.EventSystems.StandaloneInputModule>();
             if (standalone != null)
             {
                 var esGo = standalone.gameObject;
-                if (Application.isPlaying)
-                {
-                    Destroy(standalone);
-                }
-                else
-                {
-                    DestroyImmediate(standalone);
-                }
+                if (Application.isPlaying) Destroy(standalone);
+                else DestroyImmediate(standalone);
 
                 if (esGo.GetComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>() == null)
                 {
@@ -59,144 +68,196 @@ namespace MangoHeist.UI
 
         private void Start()
         {
-            // Gán sự kiện cho các nút bấm
-            if (_loginButton != null) _loginButton.onClick.AddListener(OnLoginClicked);
-            if (_registerButton != null) _registerButton.onClick.AddListener(OnRegisterClicked);
-            if (_guestButton != null) _guestButton.onClick.AddListener(OnGuestClicked);
-            if (_logoutButton != null) _logoutButton.onClick.AddListener(OnLogoutClicked);
-            if (_playOnlineButton != null) _playOnlineButton.onClick.AddListener(OnPlayOnlineClicked);
+            // Sự kiện Form Đăng nhập
+            if (_loginSubmitButton != null) _loginSubmitButton.onClick.AddListener(OnLoginSubmit);
+            if (_switchToRegisterButton != null) _switchToRegisterButton.onClick.AddListener(SwitchToRegisterMode);
+            if (_guestButton != null) _guestButton.onClick.AddListener(OnGuestClick);
+            if (_toggleLoginPasswordButton != null) _toggleLoginPasswordButton.onClick.AddListener(ToggleLoginPasswordVisibility);
+
+            // Sự kiện Form Đăng ký
+            if (_regSubmitButton != null) _regSubmitButton.onClick.AddListener(OnRegisterSubmit);
+            if (_switchToLoginButton != null) _switchToLoginButton.onClick.AddListener(SwitchToLoginMode);
+            if (_toggleRegPasswordButton != null) _toggleRegPasswordButton.onClick.AddListener(ToggleRegPasswordVisibility);
+
+            // Hồ sơ
+            if (_logoutButton != null) _logoutButton.onClick.AddListener(OnLogoutClick);
+            if (_playOnlineButton != null) _playOnlineButton.onClick.AddListener(() => ShowToast("Đang kết nối phòng đấu...", Color.cyan));
 
             // Đăng ký sự kiện từ AuthManager
-            AuthManager.Instance.OnLoginSuccess += ShowProfilePanel;
-            AuthManager.Instance.OnLoggedOut += ShowLoginPanel;
+            AuthManager.Instance.OnLoginSuccess += OnAuthSuccess;
+            AuthManager.Instance.OnLoggedOut += OnAuthLogout;
 
-            // Giới hạn ký tự input để không làm vỡ giao diện (Fix Bug 4)
-            if (_usernameInput != null) _usernameInput.characterLimit = 16;
-            if (_passwordInput != null) _passwordInput.characterLimit = 20;
-
-            ShowLoginPanel();
-            SetStatus("", Color.white);
-        }
-
-        private void Update()
-        {
-            // Hỗ trợ phím Tab và Enter chuẩn New Input System cho PC (Fix Bug 5)
-            if (_loginPanel != null && _loginPanel.activeSelf)
-            {
-                var keyboard = UnityEngine.InputSystem.Keyboard.current;
-                if (keyboard == null) return;
-
-                // Nhấn Tab để chuyển đổi giữa Username và Password
-                if (keyboard.tabKey.wasPressedThisFrame)
-                {
-                    if (_usernameInput != null && _usernameInput.isFocused && _passwordInput != null)
-                    {
-                        _passwordInput.ActivateInputField();
-                    }
-                    else if (_passwordInput != null && _passwordInput.isFocused && _usernameInput != null)
-                    {
-                        _usernameInput.ActivateInputField();
-                    }
-                }
-
-                // Nhấn Enter để Đăng Nhập
-                if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame)
-                {
-                    OnLoginClicked();
-                }
-            }
+            SwitchToLoginMode();
+            if (_toastPopup != null) _toastPopup.SetActive(false);
         }
 
         private void OnDestroy()
         {
             if (AuthManager.Instance != null)
             {
-                AuthManager.Instance.OnLoginSuccess -= ShowProfilePanel;
-                AuthManager.Instance.OnLoggedOut -= ShowLoginPanel;
+                AuthManager.Instance.OnLoginSuccess -= OnAuthSuccess;
+                AuthManager.Instance.OnLoggedOut -= OnAuthLogout;
             }
         }
 
-        private void OnLoginClicked()
+        private void Update()
         {
-            string u = _usernameInput != null ? _usernameInput.text : "";
-            string p = _passwordInput != null ? _passwordInput.text : "";
+            var keyboard = UnityEngine.InputSystem.Keyboard.current;
+            if (keyboard == null) return;
 
-            SetStatus("Đang kiểm tra tài khoản...", Color.yellow);
-            AuthManager.Instance.Login(u, p, (success, msg) =>
+            // Chuyển tab phím Tab
+            if (keyboard.tabKey.wasPressedThisFrame)
             {
-                SetStatus(msg, success ? Color.green : Color.red);
-            });
-        }
+                if (_loginContainer.activeSelf)
+                {
+                    if (_loginUsernameInput.isFocused) _loginPasswordInput.ActivateInputField();
+                    else if (_loginPasswordInput.isFocused) _loginUsernameInput.ActivateInputField();
+                }
+                else if (_registerContainer.activeSelf)
+                {
+                    if (_regUsernameInput.isFocused) _regEmailInput.ActivateInputField();
+                    else if (_regEmailInput.isFocused) _regPasswordInput.ActivateInputField();
+                    else if (_regPasswordInput.isFocused) _regConfirmPasswordInput.ActivateInputField();
+                    else if (_regConfirmPasswordInput.isFocused) _regUsernameInput.ActivateInputField();
+                }
+            }
 
-        private void OnRegisterClicked()
-        {
-            string u = _usernameInput != null ? _usernameInput.text : "";
-            string p = _passwordInput != null ? _passwordInput.text : "";
-
-            SetStatus("Đang tạo tài khoản mới...", Color.yellow);
-            AuthManager.Instance.Register(u, p, (success, msg) =>
+            // Nhấn Enter để submit
+            if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame)
             {
-                SetStatus(msg, success ? Color.green : Color.red);
-            });
+                if (_loginContainer.activeSelf) OnLoginSubmit();
+                else if (_registerContainer.activeSelf) OnRegisterSubmit();
+            }
         }
 
-        private void OnGuestClicked()
+        public void SwitchToLoginMode()
         {
-            SetStatus("Đang đăng nhập chế độ Khách...", Color.yellow);
-            AuthManager.Instance.PlayAsGuest((success, msg) =>
-            {
-                SetStatus(msg, Color.green);
-            });
-        }
-
-        private void OnLogoutClicked()
-        {
-            AuthManager.Instance.Logout();
-            // Xóa sạch mật khẩu khỏi ô nhập khi đăng xuất để bảo mật (Fix Bug 3)
-            if (_passwordInput != null) _passwordInput.text = "";
-            SetStatus("Đã đăng xuất an toàn.", Color.white);
-        }
-
-        private void OnPlayOnlineClicked()
-        {
-            Debug.Log("<color=#4CAF50>▶ Chuyển sang Sảnh Chờ (Lobby Online) hoặc Chọn Map!</color>");
-            SetStatus("Đang kết nối tới phòng chờ...", Color.cyan);
-            // Sau này khi Peter ghép sảnh Fusion vào, chỉ cần gọi:
-            // UnityEngine.SceneManagement.SceneManager.LoadScene("LobbyScene");
-        }
-
-        private void ShowLoginPanel()
-        {
-            if (_loginPanel != null) _loginPanel.SetActive(true);
+            if (_mainCardPanel != null) _mainCardPanel.SetActive(true);
+            if (_loginContainer != null) _loginContainer.SetActive(true);
+            if (_registerContainer != null) _registerContainer.SetActive(false);
             if (_profilePanel != null) _profilePanel.SetActive(false);
         }
 
-        private void ShowProfilePanel(UserAccount account)
+        public void SwitchToRegisterMode()
         {
-            if (_loginPanel != null) _loginPanel.SetActive(false);
+            if (_mainCardPanel != null) _mainCardPanel.SetActive(true);
+            if (_loginContainer != null) _loginContainer.SetActive(false);
+            if (_registerContainer != null) _registerContainer.SetActive(true);
+            if (_profilePanel != null) _profilePanel.SetActive(false);
+        }
+
+        private void OnLoginSubmit()
+        {
+            string u = _loginUsernameInput != null ? _loginUsernameInput.text : "";
+            string p = _loginPasswordInput != null ? _loginPasswordInput.text : "";
+
+            ShowToast("Đang kiểm tra...", Color.yellow);
+            AuthManager.Instance.Login(u, p, (success, msg) =>
+            {
+                ShowToast(msg, success ? new Color(0.2f, 0.9f, 0.4f) : new Color(1f, 0.35f, 0.35f));
+            });
+        }
+
+        private void OnRegisterSubmit()
+        {
+            string u = _regUsernameInput != null ? _regUsernameInput.text : "";
+            string e = _regEmailInput != null ? _regEmailInput.text : "";
+            string p = _regPasswordInput != null ? _regPasswordInput.text : "";
+            string cp = _regConfirmPasswordInput != null ? _regConfirmPasswordInput.text : "";
+
+            ShowToast("Đang tạo tài khoản...", Color.yellow);
+            AuthManager.Instance.Register(u, e, p, cp, (success, msg) =>
+            {
+                ShowToast(msg, success ? new Color(0.2f, 0.9f, 0.4f) : new Color(1f, 0.35f, 0.35f));
+            });
+        }
+
+        private void OnGuestClick()
+        {
+            ShowToast("Đang vào bằng tài khoản Khách...", Color.yellow);
+            AuthManager.Instance.PlayAsGuest((success, msg) =>
+            {
+                ShowToast(msg, new Color(0.2f, 0.9f, 0.4f));
+            });
+        }
+
+        private void OnLogoutClick()
+        {
+            AuthManager.Instance.Logout();
+            if (_loginPasswordInput != null) _loginPasswordInput.text = "";
+            if (_regPasswordInput != null) _regPasswordInput.text = "";
+            if (_regConfirmPasswordInput != null) _regConfirmPasswordInput.text = "";
+            ShowToast("Đã đăng xuất.", Color.white);
+        }
+
+        private void ToggleLoginPasswordVisibility()
+        {
+            _isLoginPasswordVisible = !_isLoginPasswordVisible;
+            if (_loginPasswordInput != null)
+            {
+                _loginPasswordInput.contentType = _isLoginPasswordVisible ? TMP_InputField.ContentType.Standard : TMP_InputField.ContentType.Password;
+                _loginPasswordInput.ForceLabelUpdate();
+            }
+            if (_toggleLoginEyeIcon != null)
+            {
+                _toggleLoginEyeIcon.text = _isLoginPasswordVisible ? "🔒" : "👁";
+            }
+        }
+
+        private void ToggleRegPasswordVisibility()
+        {
+            _isRegPasswordVisible = !_isRegPasswordVisible;
+            if (_regPasswordInput != null)
+            {
+                _regPasswordInput.contentType = _isRegPasswordVisible ? TMP_InputField.ContentType.Standard : TMP_InputField.ContentType.Password;
+                _regPasswordInput.ForceLabelUpdate();
+            }
+            if (_regConfirmPasswordInput != null)
+            {
+                _regConfirmPasswordInput.contentType = _isRegPasswordVisible ? TMP_InputField.ContentType.Standard : TMP_InputField.ContentType.Password;
+                _regConfirmPasswordInput.ForceLabelUpdate();
+            }
+            if (_toggleRegEyeIcon != null)
+            {
+                _toggleRegEyeIcon.text = _isRegPasswordVisible ? "🔒" : "👁";
+            }
+        }
+
+        private void OnAuthSuccess(UserAccount account)
+        {
+            if (_mainCardPanel != null) _mainCardPanel.SetActive(false);
             if (_profilePanel != null) _profilePanel.SetActive(true);
 
             var saveData = SaveManager.Instance != null ? SaveManager.Instance.CurrentData : null;
-
-            if (_welcomeText != null)
-                _welcomeText.text = $"Xin chào, <color=#FFD54F>{account.username}</color>!";
-
+            if (_welcomeText != null) _welcomeText.text = $"Xin chào, <color=#FFD54F>{account.username}</color>!";
             if (saveData != null)
             {
                 if (_levelText != null) _levelText.text = $"Cấp độ: {saveData.playerLevel} (EXP: {saveData.playerExp})";
                 if (_coinsText != null) _coinsText.text = $"Xu Xoài: <color=#FFA000>{saveData.mangoCoins} Xu</color>";
-                if (_unlockedMapsText != null)
-                    _unlockedMapsText.text = $"Map đã mở: {saveData.unlockedMapIds.Count} map ({string.Join(", ", saveData.unlockedMapIds)})";
+                if (_unlockedMapsText != null) _unlockedMapsText.text = $"Map đã mở: {saveData.unlockedMapIds.Count} map";
             }
         }
 
-        private void SetStatus(string message, Color color)
+        private void OnAuthLogout()
         {
-            if (_statusText != null)
-            {
-                _statusText.text = message;
-                _statusText.color = color;
-            }
+            SwitchToLoginMode();
+        }
+
+        public void ShowToast(string message, Color color)
+        {
+            if (_toastPopup == null || _toastMessageText == null) return;
+            _toastMessageText.text = message;
+            _toastMessageText.color = color;
+
+            if (_toastCoroutine != null) StopCoroutine(_toastCoroutine);
+            _toastCoroutine = StartCoroutine(ToastRoutine());
+        }
+
+        private IEnumerator ToastRoutine()
+        {
+            _toastPopup.SetActive(true);
+            yield return new WaitForSeconds(3.5f);
+            _toastPopup.SetActive(false);
         }
     }
 }

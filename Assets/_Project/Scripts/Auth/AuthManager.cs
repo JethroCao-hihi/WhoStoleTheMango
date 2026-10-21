@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using MangoHeist.Data;
 using UnityEngine;
 
@@ -12,6 +13,7 @@ namespace MangoHeist.Auth
     public class UserAccount
     {
         public string username;
+        public string email;
         public string passwordHash;
         public string playerId;
         public string registeredDate;
@@ -22,15 +24,9 @@ namespace MangoHeist.Auth
     public class AccountsDatabase
     {
         public List<UserAccount> accounts = new List<UserAccount>();
-        public UserAccount guestAccount; // Lưu thông tin tài khoản khách để không bị reset khi mở lại game
+        public UserAccount guestAccount;
     }
 
-    /// <summary>
-    /// Quản lý hệ thống Đăng nhập / Đăng ký tài khoản người chơi.
-    /// - Quản lý cơ sở dữ liệu tài khoản (Database cục bộ, sẵn sàng mở rộng lên Firebase/UGS).
-    /// - Mỗi tài khoản có tiến trình lưu riêng (Map đã mở, số xu, skin).
-    /// - Hỗ trợ chế độ "Chơi Khách / Offline" (Không cần mật khẩu).
-    /// </summary>
     public class AuthManager : MonoBehaviour
     {
         private static AuthManager _instance;
@@ -41,41 +37,20 @@ namespace MangoHeist.Auth
                 if (_instance == null)
                 {
                     var existing = FindAnyObjectByType<AuthManager>();
-                    if (existing != null)
-                    {
-                        _instance = existing;
-                    }
+                    if (existing != null) _instance = existing;
                     else
                     {
                         var go = new GameObject("[AuthManager]");
                         _instance = go.AddComponent<AuthManager>();
-                        if (Application.isPlaying)
-                        {
-                            DontDestroyOnLoad(go);
-                        }
+                        if (Application.isPlaying) DontDestroyOnLoad(go);
                     }
-                    _instance.EnsureInitialized();
                 }
-                else
-                {
-                    _instance.EnsureInitialized();
-                }
+                _instance.EnsureInitialized();
                 return _instance;
             }
         }
 
-        public void EnsureInitialized()
-        {
-            if (_db == null)
-            {
-                LoadAccountsDatabase();
-            }
-            if (_db == null) _db = new AccountsDatabase();
-            if (_db.accounts == null) _db.accounts = new List<UserAccount>();
-        }
-
         private string DatabaseFilePath => Path.Combine(Application.persistentDataPath, "accounts_db.json");
-
         private AccountsDatabase _db;
         public UserAccount CurrentUser { get; private set; }
         public bool IsLoggedIn => CurrentUser != null;
@@ -88,23 +63,21 @@ namespace MangoHeist.Auth
             if (_instance == null)
             {
                 _instance = this;
-                if (Application.isPlaying)
-                {
-                    DontDestroyOnLoad(gameObject);
-                }
-                LoadAccountsDatabase();
+                if (Application.isPlaying) DontDestroyOnLoad(gameObject);
+                EnsureInitialized();
             }
             else if (_instance != this)
             {
-                if (Application.isPlaying)
-                {
-                    Destroy(gameObject);
-                }
-                else
-                {
-                    DestroyImmediate(gameObject);
-                }
+                if (Application.isPlaying) Destroy(gameObject);
+                else DestroyImmediate(gameObject);
             }
+        }
+
+        public void EnsureInitialized()
+        {
+            if (_db == null) LoadAccountsDatabase();
+            if (_db == null) _db = new AccountsDatabase();
+            if (_db.accounts == null) _db.accounts = new List<UserAccount>();
         }
 
         private void LoadAccountsDatabase()
@@ -127,7 +100,6 @@ namespace MangoHeist.Auth
                 Debug.LogError($"[AuthManager] Lỗi đọc Database tài khoản: {ex.Message}");
                 _db = new AccountsDatabase();
             }
-
             if (_db == null) _db = new AccountsDatabase();
             if (_db.accounts == null) _db.accounts = new List<UserAccount>();
         }
@@ -145,16 +117,15 @@ namespace MangoHeist.Auth
             }
         }
 
-        /// <summary>
-        /// Đăng ký tài khoản mới
-        /// </summary>
-        public void Register(string username, string password, Action<bool, string> callback)
+        public void Register(string username, string email, string password, string confirmPassword, Action<bool, string> callback)
         {
             EnsureInitialized();
             username = username?.Trim();
+            email = email?.Trim();
+
             if (string.IsNullOrEmpty(username) || username.Length < 3)
             {
-                callback?.Invoke(false, "Tên tài khoản phải có ít nhất 3 ký tự!");
+                callback?.Invoke(false, "Tên tài khoản phải có từ 3 ký tự trở lên!");
                 return;
             }
 
@@ -164,20 +135,24 @@ namespace MangoHeist.Auth
                 return;
             }
 
-            // Kiểm tra ký tự hợp lệ, chống phá hoại JSON hoặc SQL Injection
-            if (!System.Text.RegularExpressions.Regex.IsMatch(username, @"^[a-zA-Z0-9_ -]+$"))
+            if (!Regex.IsMatch(username, @"^[a-zA-Z0-9_ -]+$"))
             {
-                callback?.Invoke(false, "Tên tài khoản chỉ được chứa chữ cái, số, gạch dưới hoặc khoảng trắng!");
+                callback?.Invoke(false, "Tên tài khoản chỉ được chứa chữ cái, số, gạch dưới!");
                 return;
             }
 
             if (string.IsNullOrEmpty(password) || password.Length < 4)
             {
-                callback?.Invoke(false, "Mật khẩu phải có ít nhất 4 ký tự!");
+                callback?.Invoke(false, "Mật khẩu phải từ 4 ký tự trở lên!");
                 return;
             }
 
-            // Kiểm tra xem tên tài khoản đã tồn tại chưa
+            if (password != confirmPassword)
+            {
+                callback?.Invoke(false, "Mật khẩu nhập lại không khớp!");
+                return;
+            }
+
             var existing = _db.accounts.Find(a => a.username.Equals(username, StringComparison.OrdinalIgnoreCase));
             if (existing != null)
             {
@@ -185,10 +160,10 @@ namespace MangoHeist.Auth
                 return;
             }
 
-            // Tạo tài khoản mới với mật khẩu mã hóa SHA-256
             var newAccount = new UserAccount
             {
                 username = username,
+                email = email,
                 passwordHash = HashPassword(password),
                 playerId = "user_" + Guid.NewGuid().ToString().Substring(0, 8),
                 registeredDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
@@ -198,18 +173,12 @@ namespace MangoHeist.Auth
             _db.accounts.Add(newAccount);
             SaveAccountsDatabase();
 
-            Debug.Log($"<color=#4CAF50><b>[AuthManager]</b> Đăng ký thành công tài khoản:</color> {username} (ID: {newAccount.playerId})");
-            
-            // Tự động đăng nhập luôn sau khi đăng ký
             CurrentUser = newAccount;
             SyncWithSaveManager(newAccount);
             OnLoginSuccess?.Invoke(newAccount);
             callback?.Invoke(true, "Đăng ký thành công!");
         }
 
-        /// <summary>
-        /// Đăng nhập tài khoản
-        /// </summary>
         public void Login(string username, string password, Action<bool, string> callback)
         {
             EnsureInitialized();
@@ -227,8 +196,7 @@ namespace MangoHeist.Auth
                 return;
             }
 
-            string inputHash = HashPassword(password);
-            if (account.passwordHash != inputHash)
+            if (account.passwordHash != HashPassword(password))
             {
                 callback?.Invoke(false, "Mật khẩu không chính xác!");
                 return;
@@ -239,15 +207,10 @@ namespace MangoHeist.Auth
 
             CurrentUser = account;
             SyncWithSaveManager(account);
-
-            Debug.Log($"<color=#2196F3><b>[AuthManager]</b> Đăng nhập thành công:</color> {username}");
             OnLoginSuccess?.Invoke(account);
             callback?.Invoke(true, "Đăng nhập thành công!");
         }
 
-        /// <summary>
-        /// Chơi nhanh dạng Khách (Guest / Offline) - Tự động bảo lưu tiến trình trên máy
-        /// </summary>
         public void PlayAsGuest(Action<bool, string> callback)
         {
             EnsureInitialized();
@@ -262,32 +225,18 @@ namespace MangoHeist.Auth
                 };
                 SaveAccountsDatabase();
             }
-            else
-            {
-                _db.guestAccount.lastLoginDate = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                SaveAccountsDatabase();
-            }
 
             CurrentUser = _db.guestAccount;
             SyncWithSaveManager(_db.guestAccount);
-
-            Debug.Log($"<color=#FF9800><b>[AuthManager]</b> Nạp lại dữ liệu Khách:</color> {_db.guestAccount.username} ({_db.guestAccount.playerId})");
             OnLoginSuccess?.Invoke(_db.guestAccount);
             callback?.Invoke(true, "Đang vào game với tài khoản Khách...");
         }
 
-        /// <summary>
-        /// Đăng xuất tài khoản
-        /// </summary>
         public void Logout()
         {
             CurrentUser = null;
-            if (SaveManager.Instance != null)
-            {
-                SaveManager.Instance.ResetSession();
-            }
+            if (SaveManager.Instance != null) SaveManager.Instance.ResetSession();
             OnLoggedOut?.Invoke();
-            Debug.Log("[AuthManager] Đã đăng xuất.");
         }
 
         private void SyncWithSaveManager(UserAccount account)
@@ -304,10 +253,7 @@ namespace MangoHeist.Auth
             {
                 byte[] bytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password + "_MangoHeistSalt_2026"));
                 StringBuilder builder = new StringBuilder();
-                foreach (byte b in bytes)
-                {
-                    builder.Append(b.ToString("x2"));
-                }
+                foreach (byte b in bytes) builder.Append(b.ToString("x2"));
                 return builder.ToString();
             }
         }

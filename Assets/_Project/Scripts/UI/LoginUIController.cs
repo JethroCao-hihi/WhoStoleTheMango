@@ -29,6 +29,8 @@ namespace MangoHeist.UI
         // Text & Input References
         private TextMeshProUGUI _subtitleText;
         private TMP_InputField _inputUsername;
+        private TMP_InputField _inputEmail;
+        private GameObject _rowEmail;
         private TMP_InputField _inputPassword;
         private TMP_InputField _inputConfirmPassword;
         private GameObject _rowConfirmPassword;
@@ -210,8 +212,9 @@ namespace MangoHeist.UI
             _subtitleText = CreateTextElement("Subtitle", _mainCardGo.transform, "MANGO HEIST - HỆ THỐNG ĐĂNG NHẬP", 13, FontStyles.Normal, new Color32(156, 163, 175, 255), 25);
 
             // 2. Input Fields
-            _inputUsername = CreateInputField("Input_Username", _mainCardGo.transform, "Nhập tên tài khoản...", false, out _);
-            _inputPassword = CreateInputField("Input_Password", _mainCardGo.transform, "Nhập mật khẩu...", true, out _);
+            _inputUsername = CreateInputField("Input_Username", _mainCardGo.transform, "Nhập tên tài khoản (6-24 ký tự)...", false, out _);
+            _inputEmail = CreateInputField("Input_Email", _mainCardGo.transform, "Nhập email (tùy chọn)...", false, out _rowEmail);
+            _inputPassword = CreateInputField("Input_Password", _mainCardGo.transform, "Nhập mật khẩu (từ 8 ký tự)...", true, out _);
             _inputConfirmPassword = CreateInputField("Input_ConfirmPassword", _mainCardGo.transform, "Nhập lại mật khẩu...", true, out _rowConfirmPassword);
 
             // 3. Buttons
@@ -456,6 +459,10 @@ namespace MangoHeist.UI
         public void SetRegisterMode(bool isRegister)
         {
             _isRegisterMode = isRegister;
+            if (_rowEmail != null)
+            {
+                _rowEmail.SetActive(isRegister);
+            }
             if (_rowConfirmPassword != null)
             {
                 _rowConfirmPassword.SetActive(isRegister);
@@ -482,36 +489,14 @@ namespace MangoHeist.UI
             string username = _inputUsername != null ? _inputUsername.text.Trim() : "";
             string password = _inputPassword != null ? _inputPassword.text : "";
 
-            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
-            {
-                ShowToast("Vui lòng nhập đầy đủ tên tài khoản và mật khẩu!");
-                return;
-            }
-
             if (_isRegisterMode)
             {
+                string email = _inputEmail != null ? _inputEmail.text.Trim() : "";
                 string confirm = _inputConfirmPassword != null ? _inputConfirmPassword.text : "";
-                if (string.IsNullOrEmpty(confirm))
-                {
-                    ShowToast("Vui lòng nhập lại mật khẩu xác nhận!");
-                    return;
-                }
-
-                if (password != confirm)
-                {
-                    ShowToast("Mật khẩu xác nhận không trùng khớp!");
-                    return;
-                }
-
-                if (password.Length < 6)
-                {
-                    ShowToast("Mật khẩu phải có độ dài từ 6 ký tự trở lên!");
-                    return;
-                }
 
                 if (AuthManager.Instance != null)
                 {
-                    AuthManager.Instance.Register(username, password, (success, msg) =>
+                    AuthManager.Instance.Register(username, email, password, confirm, (success, msg) =>
                     {
                         if (success)
                         {
@@ -526,7 +511,7 @@ namespace MangoHeist.UI
                 }
                 else
                 {
-                    ShowToast("Lỗi hệ thống: AuthManager chưa được khởi tạo!");
+                    ShowToast(AuthErrorCodes.DB_CONNECT_TIMEOUT);
                 }
             }
             else
@@ -547,7 +532,7 @@ namespace MangoHeist.UI
                 }
                 else
                 {
-                    ShowToast("Lỗi hệ thống: AuthManager chưa được khởi tạo!");
+                    ShowToast(AuthErrorCodes.DB_CONNECT_TIMEOUT);
                 }
             }
         }

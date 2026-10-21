@@ -4,260 +4,590 @@ using MangoHeist.Data;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+#if ENABLE_INPUT_SYSTEM
+using UnityEngine.InputSystem;
+#endif
 
 namespace MangoHeist.UI
 {
+    /// <summary>
+    /// Procedural UI Controller toàn diện cho màn hình Đăng Nhập & Đăng Ký.
+    /// Tự động dựng 100% uGUI bằng code chuẩn, xóa bỏ mọi rác UI cũ,
+    /// chống co giãn lỗi chữ dọc, hỗ trợ bàn phím New Input System, Toast thông báo lỗi.
+    /// </summary>
     public class LoginUIController : MonoBehaviour
     {
-        [Header("=== KHUNG CHÍNH (PANELS) ===")]
-        [SerializeField] private GameObject _mainCardPanel;
-        [SerializeField] private GameObject _loginContainer;
-        [SerializeField] private GameObject _registerContainer;
-        [SerializeField] private GameObject _profilePanel;
-
-        [Header("=== FORM ĐĂNG NHẬP ===")]
-        [SerializeField] private TMP_InputField _loginUsernameInput;
-        [SerializeField] private TMP_InputField _loginPasswordInput;
-        [SerializeField] private Button _loginSubmitButton;
-        [SerializeField] private Button _switchToRegisterButton;
-        [SerializeField] private Button _guestButton;
-        [SerializeField] private Button _toggleLoginPasswordButton;
-        [SerializeField] private TextMeshProUGUI _toggleLoginEyeIcon;
-
-        [Header("=== FORM ĐĂNG KÝ ===")]
-        [SerializeField] private TMP_InputField _regUsernameInput;
-        [SerializeField] private TMP_InputField _regEmailInput;
-        [SerializeField] private TMP_InputField _regPasswordInput;
-        [SerializeField] private TMP_InputField _regConfirmPasswordInput;
-        [SerializeField] private Button _regSubmitButton;
-        [SerializeField] private Button _switchToLoginButton;
-        [SerializeField] private Button _toggleRegPasswordButton;
-        [SerializeField] private TextMeshProUGUI _toggleRegEyeIcon;
-
-        [Header("=== THÔNG BÁO LỖI / TOAST POPUP ===")]
-        [SerializeField] private GameObject _toastPopup;
-        [SerializeField] private TextMeshProUGUI _toastMessageText;
-
-        [Header("=== HỒ SƠ SAU KHI ĐĂNG NHẬP ===")]
-        [SerializeField] private TextMeshProUGUI _welcomeText;
-        [SerializeField] private TextMeshProUGUI _levelText;
-        [SerializeField] private TextMeshProUGUI _coinsText;
-        [SerializeField] private TextMeshProUGUI _unlockedMapsText;
-        [SerializeField] private Button _playOnlineButton;
-        [SerializeField] private Button _logoutButton;
-
+        private bool _isRegisterMode = false;
         private Coroutine _toastCoroutine;
-        private bool _isLoginPasswordVisible = false;
-        private bool _isRegPasswordVisible = false;
+
+        // UI GameObjects
+        private GameObject _backgroundGo;
+        private GameObject _mainCardGo;
+        private GameObject _profileCardGo;
+        private GameObject _toastPopupGo;
+
+        // Text & Input References
+        private TextMeshProUGUI _subtitleText;
+        private TMP_InputField _inputUsername;
+        private TMP_InputField _inputPassword;
+        private TMP_InputField _inputConfirmPassword;
+        private GameObject _rowConfirmPassword;
+
+        // Button Texts & Labels
+        private TextMeshProUGUI _lblLoginBtn;
+        private TextMeshProUGUI _lblSwitchModeBtn;
+        private TextMeshProUGUI _toastText;
+
+        // Profile Card Texts
+        private TextMeshProUGUI _txtWelcome;
+        private TextMeshProUGUI _txtLevel;
+        private TextMeshProUGUI _txtCoins;
+        private TextMeshProUGUI _txtMaps;
 
         private void Awake()
         {
-            var standalone = FindAnyObjectByType<UnityEngine.EventSystems.StandaloneInputModule>();
-            if (standalone != null)
-            {
-                var esGo = standalone.gameObject;
-                if (Application.isPlaying) Destroy(standalone);
-                else DestroyImmediate(standalone);
+            // Đảm bảo Canvas có các thành phần chuẩn
+            var canvas = GetComponent<Canvas>();
+            if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
 
-                if (esGo.GetComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>() == null)
-                {
-                    esGo.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
-                }
+            var scaler = GetComponent<CanvasScaler>();
+            if (scaler == null) scaler = gameObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920, 1080);
+            scaler.matchWidthOrHeight = 0.5f;
+
+            if (GetComponent<GraphicRaycaster>() == null)
+            {
+                gameObject.AddComponent<GraphicRaycaster>();
             }
+
+            RebuildProceduralUI();
         }
 
         private void Start()
         {
-            // Sự kiện Form Đăng nhập
-            if (_loginSubmitButton != null) _loginSubmitButton.onClick.AddListener(OnLoginSubmit);
-            if (_switchToRegisterButton != null) _switchToRegisterButton.onClick.AddListener(SwitchToRegisterMode);
-            if (_guestButton != null) _guestButton.onClick.AddListener(OnGuestClick);
-            if (_toggleLoginPasswordButton != null) _toggleLoginPasswordButton.onClick.AddListener(ToggleLoginPasswordVisibility);
+            SetRegisterMode(false);
+            if (_toastPopupGo != null) _toastPopupGo.SetActive(false);
+            if (_profileCardGo != null) _profileCardGo.SetActive(false);
 
-            // Sự kiện Form Đăng ký
-            if (_regSubmitButton != null) _regSubmitButton.onClick.AddListener(OnRegisterSubmit);
-            if (_switchToLoginButton != null) _switchToLoginButton.onClick.AddListener(SwitchToLoginMode);
-            if (_toggleRegPasswordButton != null) _toggleRegPasswordButton.onClick.AddListener(ToggleRegPasswordVisibility);
-
-            // Hồ sơ
-            if (_logoutButton != null) _logoutButton.onClick.AddListener(OnLogoutClick);
-            if (_playOnlineButton != null) _playOnlineButton.onClick.AddListener(() => ShowToast("Đang kết nối phòng đấu...", Color.cyan));
-
-            // Đăng ký sự kiện từ AuthManager
-            AuthManager.Instance.OnLoginSuccess += OnAuthSuccess;
-            AuthManager.Instance.OnLoggedOut += OnAuthLogout;
-
-            SwitchToLoginMode();
-            if (_toastPopup != null) _toastPopup.SetActive(false);
-        }
-
-        private void OnDestroy()
-        {
-            if (AuthManager.Instance != null)
+            if (_inputUsername != null)
             {
-                AuthManager.Instance.OnLoginSuccess -= OnAuthSuccess;
-                AuthManager.Instance.OnLoggedOut -= OnAuthLogout;
+                _inputUsername.ActivateInputField();
             }
         }
 
         private void Update()
         {
-            var keyboard = UnityEngine.InputSystem.Keyboard.current;
+#if ENABLE_INPUT_SYSTEM
+            var keyboard = Keyboard.current;
             if (keyboard == null) return;
 
-            // Chuyển tab phím Tab
+            // Chuyển Focus bằng phím Tab
             if (keyboard.tabKey.wasPressedThisFrame)
             {
-                if (_loginContainer.activeSelf)
+                if (_isRegisterMode)
                 {
-                    if (_loginUsernameInput.isFocused) _loginPasswordInput.ActivateInputField();
-                    else if (_loginPasswordInput.isFocused) _loginUsernameInput.ActivateInputField();
+                    if (_inputUsername != null && _inputUsername.isFocused) _inputPassword.ActivateInputField();
+                    else if (_inputPassword != null && _inputPassword.isFocused) _inputConfirmPassword.ActivateInputField();
+                    else if (_inputConfirmPassword != null && _inputConfirmPassword.isFocused) _inputUsername.ActivateInputField();
                 }
-                else if (_registerContainer.activeSelf)
+                else
                 {
-                    if (_regUsernameInput.isFocused) _regEmailInput.ActivateInputField();
-                    else if (_regEmailInput.isFocused) _regPasswordInput.ActivateInputField();
-                    else if (_regPasswordInput.isFocused) _regConfirmPasswordInput.ActivateInputField();
-                    else if (_regConfirmPasswordInput.isFocused) _regUsernameInput.ActivateInputField();
+                    if (_inputUsername != null && _inputUsername.isFocused) _inputPassword.ActivateInputField();
+                    else if (_inputPassword != null && _inputPassword.isFocused) _inputUsername.ActivateInputField();
                 }
             }
 
-            // Nhấn Enter để submit
+            // Enter để Submit
             if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame)
             {
-                if (_loginContainer.activeSelf) OnLoginSubmit();
-                else if (_registerContainer.activeSelf) OnRegisterSubmit();
+                OnSubmitClicked();
+            }
+#endif
+        }
+
+        [ContextMenu("Dựng lại toàn bộ UI (Procedural Rebuild)")]
+        public void RebuildProceduralUI()
+        {
+            // ══════════════════════════════════════════════════════════════════
+            // QUY TẮC 1: XÓA SẠCH MỌI GAMEOBJECT / UI CŨ TRÊN CANVAS
+            // ══════════════════════════════════════════════════════════════════
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                var child = transform.GetChild(i).gameObject;
+                child.SetActive(false);
+#if UNITY_EDITOR
+                if (!Application.isPlaying)
+                    DestroyImmediate(child);
+                else
+                    Destroy(child);
+#else
+                Destroy(child);
+#endif
+            }
+
+            // 1. NỀN MÀU #111827 FULL MÀN HÌNH (KHÔNG DÙNG SPRITE ẢNH VẼ SẴN)
+            _backgroundGo = new GameObject("Background");
+            _backgroundGo.transform.SetParent(transform, false);
+            var bgRt = _backgroundGo.AddComponent<RectTransform>();
+            bgRt.anchorMin = Vector2.zero;
+            bgRt.anchorMax = Vector2.one;
+            bgRt.offsetMin = Vector2.zero;
+            bgRt.offsetMax = Vector2.zero;
+
+            var bgImg = _backgroundGo.AddComponent<Image>();
+            bgImg.sprite = null;
+            bgImg.color = new Color32(17, 24, 39, 255); // #111827
+
+            // ══════════════════════════════════════════════════════════════════
+            // QUY TẮC 2: KHUNG CHÍNH MAINCARD (460 x 560, KHÔNG BỊ CO WIDTH = 0)
+            // ══════════════════════════════════════════════════════════════════
+            _mainCardGo = new GameObject("MainCard");
+            _mainCardGo.transform.SetParent(transform, false);
+            var cardRt = _mainCardGo.AddComponent<RectTransform>();
+            cardRt.anchorMin = new Vector2(0.5f, 0.5f);
+            cardRt.anchorMax = new Vector2(0.5f, 0.5f);
+            cardRt.pivot = new Vector2(0.5f, 0.5f);
+            cardRt.sizeDelta = new Vector2(460, 560);
+            cardRt.anchoredPosition = Vector2.zero;
+
+            var cardImg = _mainCardGo.AddComponent<Image>();
+            cardImg.sprite = null;
+            cardImg.color = new Color32(31, 41, 55, 255); // #1F2937
+
+            var cardOutline = _mainCardGo.AddComponent<Outline>();
+            cardOutline.effectColor = new Color32(55, 65, 81, 255); // #374151
+            cardOutline.effectDistance = new Vector2(2, -2);
+
+            var cardShadow = _mainCardGo.AddComponent<Shadow>();
+            cardShadow.effectColor = new Color32(0, 0, 0, 120);
+            cardShadow.effectDistance = new Vector2(0, -8);
+
+            // Cấu hình VerticalLayoutGroup cực chuẩn
+            var vlg = _mainCardGo.AddComponent<VerticalLayoutGroup>();
+            vlg.padding = new RectOffset(35, 35, 35, 35);
+            vlg.spacing = 16;
+            vlg.childAlignment = TextAnchor.UpperCenter;
+            vlg.childControlWidth = true;
+            vlg.childForceExpandWidth = true;
+            vlg.childControlHeight = true;
+            vlg.childForceExpandHeight = false;
+
+            // ══════════════════════════════════════════════════════════════════
+            // QUY TẮC 3: CÁC COMPONENT THẬT TRÊN GIAO DIỆN
+            // ══════════════════════════════════════════════════════════════════
+
+            // 1. Header (Title & Subtitle)
+            var titleTxt = CreateTextElement("Title", _mainCardGo.transform, "TRỘM XOÀI ĐẠI CHIẾN", 28, FontStyles.Bold, new Color32(245, 158, 11, 255), 45);
+            _subtitleText = CreateTextElement("Subtitle", _mainCardGo.transform, "MANGO HEIST - HỆ THỐNG ĐĂNG NHẬP", 13, FontStyles.Normal, new Color32(156, 163, 175, 255), 25);
+
+            // 2. Input Fields
+            _inputUsername = CreateInputField("Input_Username", _mainCardGo.transform, "Nhập tên tài khoản...", false, out _);
+            _inputPassword = CreateInputField("Input_Password", _mainCardGo.transform, "Nhập mật khẩu...", true, out _);
+            _inputConfirmPassword = CreateInputField("Input_ConfirmPassword", _mainCardGo.transform, "Nhập lại mật khẩu...", true, out _rowConfirmPassword);
+
+            // 3. Buttons
+            var btnLogin = CreateButton("Btn_Login", _mainCardGo.transform, "ĐĂNG NHẬP", new Color32(16, 185, 129, 255), 52, out _lblLoginBtn);
+            btnLogin.onClick.AddListener(OnSubmitClicked);
+
+            var btnSwitch = CreateButton("Btn_SwitchMode", _mainCardGo.transform, "ĐĂNG KÝ TÀI KHOẢN MỚI", new Color32(59, 130, 246, 255), 48, out _lblSwitchModeBtn);
+            btnSwitch.onClick.AddListener(() => SetRegisterMode(!_isRegisterMode));
+
+            var btnGuest = CreateButton("Btn_Guest", _mainCardGo.transform, "CHƠI KHÁCH / OFFLINE (BỎ QUA)", new Color32(75, 85, 99, 255), 44, out _);
+            btnGuest.onClick.AddListener(OnGuestClicked);
+
+            // ══════════════════════════════════════════════════════════════════
+            // QUY TẮC 4: HỘP THÔNG BÁO LỖI THẬT (TOAST NOTIFICATION)
+            // ══════════════════════════════════════════════════════════════════
+            _toastPopupGo = new GameObject("ToastPopup");
+            _toastPopupGo.transform.SetParent(transform, false);
+            var toastRt = _toastPopupGo.AddComponent<RectTransform>();
+            toastRt.anchorMin = new Vector2(1, 0);
+            toastRt.anchorMax = new Vector2(1, 0);
+            toastRt.pivot = new Vector2(1, 0);
+            toastRt.sizeDelta = new Vector2(380, 80);
+            toastRt.anchoredPosition = new Vector2(-25, 25);
+
+            var toastImg = _toastPopupGo.AddComponent<Image>();
+            toastImg.sprite = null;
+            toastImg.color = new Color32(127, 29, 29, 245); // #7F1D1D đỏ sẫm
+
+            var toastOutline = _toastPopupGo.AddComponent<Outline>();
+            toastOutline.effectColor = new Color32(239, 68, 68, 255); // #EF4444 viền đỏ tươi
+            toastOutline.effectDistance = new Vector2(2, -2);
+
+            var toastShadow = _toastPopupGo.AddComponent<Shadow>();
+            toastShadow.effectColor = new Color32(0, 0, 0, 160);
+            toastShadow.effectDistance = new Vector2(0, -4);
+
+            _toastText = CreateTextElement("ToastMessage", _toastPopupGo.transform, "Thông báo lỗi!", 14, FontStyles.Normal, Color.white, 70);
+            var toastTxtRt = _toastText.GetComponent<RectTransform>();
+            toastTxtRt.offsetMin = new Vector2(16, 8);
+            toastTxtRt.offsetMax = new Vector2(-16, -8);
+            _toastText.alignment = TextAlignmentOptions.MidlineLeft;
+            _toastText.enableWordWrapping = true; // Toast cho phép xuống dòng nếu câu thông báo dài
+
+            _toastPopupGo.SetActive(false);
+
+            // ══════════════════════════════════════════════════════════════════
+            // 5. PROFILE CARD (Hiện sau khi Đăng Nhập / Chơi khách thành công)
+            // ══════════════════════════════════════════════════════════════════
+            BuildProfileCard();
+
+            SetRegisterMode(false);
+        }
+
+        private void BuildProfileCard()
+        {
+            _profileCardGo = new GameObject("ProfileCard");
+            _profileCardGo.transform.SetParent(transform, false);
+            var pRt = _profileCardGo.AddComponent<RectTransform>();
+            pRt.anchorMin = new Vector2(0.5f, 0.5f);
+            pRt.anchorMax = new Vector2(0.5f, 0.5f);
+            pRt.pivot = new Vector2(0.5f, 0.5f);
+            pRt.sizeDelta = new Vector2(460, 480);
+            pRt.anchoredPosition = Vector2.zero;
+
+            var pImg = _profileCardGo.AddComponent<Image>();
+            pImg.color = new Color32(31, 41, 55, 255);
+
+            var pOut = _profileCardGo.AddComponent<Outline>();
+            pOut.effectColor = new Color32(16, 185, 129, 255);
+            pOut.effectDistance = new Vector2(2, -2);
+
+            var vlg = _profileCardGo.AddComponent<VerticalLayoutGroup>();
+            vlg.padding = new RectOffset(35, 35, 35, 35);
+            vlg.spacing = 16;
+            vlg.childAlignment = TextAnchor.UpperCenter;
+            vlg.childControlWidth = true;
+            vlg.childForceExpandWidth = true;
+            vlg.childControlHeight = true;
+            vlg.childForceExpandHeight = false;
+
+            CreateTextElement("P_Title", _profileCardGo.transform, "MANGO HEIST - HỒ SƠ", 24, FontStyles.Bold, new Color32(245, 158, 11, 255), 40);
+            _txtWelcome = CreateTextElement("P_Welcome", _profileCardGo.transform, "Xin chào người chơi!", 18, FontStyles.Bold, Color.white, 30);
+            _txtLevel = CreateTextElement("P_Level", _profileCardGo.transform, "Cấp độ: 1", 16, FontStyles.Normal, new Color32(156, 163, 175, 255), 26);
+            _txtCoins = CreateTextElement("P_Coins", _profileCardGo.transform, "Xu Xoài: 100 Xu", 18, FontStyles.Bold, new Color32(245, 158, 11, 255), 30);
+            _txtMaps = CreateTextElement("P_Maps", _profileCardGo.transform, "Map đã mở: 1 map", 16, FontStyles.Normal, new Color32(16, 185, 129, 255), 26);
+
+            var btnLobby = CreateButton("Btn_Lobby", _profileCardGo.transform, "VÀO SẢNH CHỜ (LOBBY)", new Color32(16, 185, 129, 255), 50, out _);
+            btnLobby.onClick.AddListener(() => ShowToast("Chức năng Multiplayer đang phát triển!", new Color32(59, 130, 246, 255)));
+
+            var btnLogout = CreateButton("Btn_Logout", _profileCardGo.transform, "ĐĂNG XUẤT", new Color32(239, 68, 68, 255), 44, out _);
+            btnLogout.onClick.AddListener(OnLogoutClicked);
+
+            _profileCardGo.SetActive(false);
+        }
+
+        private TextMeshProUGUI CreateTextElement(string name, Transform parent, string text, float fontSize, FontStyles style, Color color, float height)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+
+            var le = go.AddComponent<LayoutElement>();
+            le.preferredHeight = height;
+            le.flexibleWidth = 1f;
+
+            var tmp = go.AddComponent<TextMeshProUGUI>();
+            tmp.text = text;
+            tmp.fontSize = fontSize;
+            tmp.fontStyle = style;
+            tmp.color = color;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.enableWordWrapping = false;
+            tmp.overflowMode = TextOverflowModes.Overflow;
+            return tmp;
+        }
+
+        private TMP_InputField CreateInputField(string name, Transform parent, string placeholderText, bool isPassword, out GameObject rowGo)
+        {
+            rowGo = new GameObject(name);
+            rowGo.transform.SetParent(parent, false);
+
+            var le = rowGo.AddComponent<LayoutElement>();
+            le.preferredHeight = 50f;
+            le.flexibleWidth = 1f;
+
+            var rowImg = rowGo.AddComponent<Image>();
+            rowImg.sprite = null;
+            rowImg.color = new Color32(55, 65, 81, 255); // #374151
+
+            var outline = rowGo.AddComponent<Outline>();
+            outline.effectColor = new Color32(75, 85, 99, 255); // #4B5563
+            outline.effectDistance = new Vector2(1, -1);
+
+            // Text Area Container với RectMask2D (cách lề trái 16px, trên dưới 6px)
+            var textAreaGo = new GameObject("Text Area");
+            textAreaGo.transform.SetParent(rowGo.transform, false);
+            var areaRt = textAreaGo.AddComponent<RectTransform>();
+            areaRt.anchorMin = Vector2.zero;
+            areaRt.anchorMax = Vector2.one;
+            areaRt.offsetMin = new Vector2(16, 6);
+            areaRt.offsetMax = new Vector2(-16, -6);
+            textAreaGo.AddComponent<RectMask2D>();
+
+            // Text Component
+            var textGo = new GameObject("Text");
+            textGo.transform.SetParent(textAreaGo.transform, false);
+            var textRt = textGo.AddComponent<RectTransform>();
+            textRt.anchorMin = Vector2.zero;
+            textRt.anchorMax = Vector2.one;
+            textRt.offsetMin = Vector2.zero;
+            textRt.offsetMax = Vector2.zero;
+
+            var txt = textGo.AddComponent<TextMeshProUGUI>();
+            txt.fontSize = 16f;
+            txt.color = Color.white;
+            txt.alignment = TextAlignmentOptions.MidlineLeft;
+            txt.enableWordWrapping = false;
+            txt.overflowMode = TextOverflowModes.Overflow;
+
+            // Placeholder Component
+            var phGo = new GameObject("Placeholder");
+            phGo.transform.SetParent(textAreaGo.transform, false);
+            var phRt = phGo.AddComponent<RectTransform>();
+            phRt.anchorMin = Vector2.zero;
+            phRt.anchorMax = Vector2.one;
+            phRt.offsetMin = Vector2.zero;
+            phRt.offsetMax = Vector2.zero;
+
+            var ph = phGo.AddComponent<TextMeshProUGUI>();
+            ph.text = placeholderText;
+            ph.fontSize = 16f;
+            ph.fontStyle = FontStyles.Italic;
+            ph.color = new Color32(156, 163, 175, 180); // #9CA3AF
+            ph.alignment = TextAlignmentOptions.MidlineLeft;
+            ph.enableWordWrapping = false;
+            ph.overflowMode = TextOverflowModes.Overflow;
+
+            var inputField = rowGo.AddComponent<TMP_InputField>();
+            inputField.textViewport = areaRt;
+            inputField.textComponent = txt;
+            inputField.placeholder = ph;
+            inputField.characterLimit = 20;
+
+            if (isPassword)
+            {
+                inputField.contentType = TMP_InputField.ContentType.Password;
+                inputField.asteriskChar = '*';
+            }
+
+            return inputField;
+        }
+
+        private Button CreateButton(string name, Transform parent, string label, Color32 bgColor, float height, out TextMeshProUGUI labelTmp)
+        {
+            var btnGo = new GameObject(name);
+            btnGo.transform.SetParent(parent, false);
+
+            var le = btnGo.AddComponent<LayoutElement>();
+            le.preferredHeight = height;
+            le.flexibleWidth = 1f;
+
+            var img = btnGo.AddComponent<Image>();
+            img.sprite = null;
+            img.color = bgColor;
+
+            var btn = btnGo.AddComponent<Button>();
+            var colors = btn.colors;
+            colors.highlightedColor = bgColor * 1.15f;
+            colors.pressedColor = bgColor * 0.85f;
+            btn.colors = colors;
+
+            var txtGo = new GameObject("Text");
+            txtGo.transform.SetParent(btnGo.transform, false);
+            var txtRt = txtGo.AddComponent<RectTransform>();
+            txtRt.anchorMin = Vector2.zero;
+            txtRt.anchorMax = Vector2.one;
+            txtRt.offsetMin = Vector2.zero;
+            txtRt.offsetMax = Vector2.zero;
+
+            labelTmp = txtGo.AddComponent<TextMeshProUGUI>();
+            labelTmp.text = label;
+            labelTmp.fontSize = 16f;
+            labelTmp.fontStyle = FontStyles.Bold;
+            labelTmp.color = Color.white;
+            labelTmp.alignment = TextAlignmentOptions.Center;
+            labelTmp.enableWordWrapping = false;
+            labelTmp.overflowMode = TextOverflowModes.Overflow;
+
+            return btn;
+        }
+
+        public void SetRegisterMode(bool isRegister)
+        {
+            _isRegisterMode = isRegister;
+            if (_rowConfirmPassword != null)
+            {
+                _rowConfirmPassword.SetActive(isRegister);
+            }
+
+            if (_lblLoginBtn != null)
+            {
+                _lblLoginBtn.text = isRegister ? "XÁC NHẬN ĐĂNG KÝ" : "ĐĂNG NHẬP";
+            }
+
+            if (_lblSwitchModeBtn != null)
+            {
+                _lblSwitchModeBtn.text = isRegister ? "QUAY LẠI ĐĂNG NHẬP" : "ĐĂNG KÝ TÀI KHOẢN MỚI";
+            }
+
+            if (_subtitleText != null)
+            {
+                _subtitleText.text = isRegister ? "MANGO HEIST - ĐĂNG KÝ TÀI KHOẢN MỚI" : "MANGO HEIST - HỆ THỐNG ĐĂNG NHẬP";
             }
         }
 
-        public void SwitchToLoginMode()
+        private void OnSubmitClicked()
         {
-            if (_mainCardPanel != null) _mainCardPanel.SetActive(true);
-            if (_loginContainer != null) _loginContainer.SetActive(true);
-            if (_registerContainer != null) _registerContainer.SetActive(false);
-            if (_profilePanel != null) _profilePanel.SetActive(false);
-        }
+            string username = _inputUsername != null ? _inputUsername.text.Trim() : "";
+            string password = _inputPassword != null ? _inputPassword.text : "";
 
-        public void SwitchToRegisterMode()
-        {
-            if (_mainCardPanel != null) _mainCardPanel.SetActive(true);
-            if (_loginContainer != null) _loginContainer.SetActive(false);
-            if (_registerContainer != null) _registerContainer.SetActive(true);
-            if (_profilePanel != null) _profilePanel.SetActive(false);
-        }
-
-        private void OnLoginSubmit()
-        {
-            string u = _loginUsernameInput != null ? _loginUsernameInput.text : "";
-            string p = _loginPasswordInput != null ? _loginPasswordInput.text : "";
-
-            ShowToast("Đang kiểm tra...", Color.yellow);
-            AuthManager.Instance.Login(u, p, (success, msg) =>
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
-                ShowToast(msg, success ? new Color(0.2f, 0.9f, 0.4f) : new Color(1f, 0.35f, 0.35f));
-            });
-        }
-
-        private void OnRegisterSubmit()
-        {
-            string u = _regUsernameInput != null ? _regUsernameInput.text : "";
-            string e = _regEmailInput != null ? _regEmailInput.text : "";
-            string p = _regPasswordInput != null ? _regPasswordInput.text : "";
-            string cp = _regConfirmPasswordInput != null ? _regConfirmPasswordInput.text : "";
-
-            ShowToast("Đang tạo tài khoản...", Color.yellow);
-            AuthManager.Instance.Register(u, e, p, cp, (success, msg) =>
-            {
-                ShowToast(msg, success ? new Color(0.2f, 0.9f, 0.4f) : new Color(1f, 0.35f, 0.35f));
-            });
-        }
-
-        private void OnGuestClick()
-        {
-            ShowToast("Đang vào bằng tài khoản Khách...", Color.yellow);
-            AuthManager.Instance.PlayAsGuest((success, msg) =>
-            {
-                ShowToast(msg, new Color(0.2f, 0.9f, 0.4f));
-            });
-        }
-
-        private void OnLogoutClick()
-        {
-            AuthManager.Instance.Logout();
-            if (_loginPasswordInput != null) _loginPasswordInput.text = "";
-            if (_regPasswordInput != null) _regPasswordInput.text = "";
-            if (_regConfirmPasswordInput != null) _regConfirmPasswordInput.text = "";
-            ShowToast("Đã đăng xuất.", Color.white);
-        }
-
-        private void ToggleLoginPasswordVisibility()
-        {
-            _isLoginPasswordVisible = !_isLoginPasswordVisible;
-            if (_loginPasswordInput != null)
-            {
-                _loginPasswordInput.contentType = _isLoginPasswordVisible ? TMP_InputField.ContentType.Standard : TMP_InputField.ContentType.Password;
-                _loginPasswordInput.ForceLabelUpdate();
+                ShowToast("Vui lòng nhập đầy đủ tên tài khoản và mật khẩu!");
+                return;
             }
-            if (_toggleLoginEyeIcon != null)
-            {
-                _toggleLoginEyeIcon.text = _isLoginPasswordVisible ? "ẨN" : "HIỆN";
-            }
-        }
 
-        private void ToggleRegPasswordVisibility()
-        {
-            _isRegPasswordVisible = !_isRegPasswordVisible;
-            if (_regPasswordInput != null)
+            if (_isRegisterMode)
             {
-                _regPasswordInput.contentType = _isRegPasswordVisible ? TMP_InputField.ContentType.Standard : TMP_InputField.ContentType.Password;
-                _regPasswordInput.ForceLabelUpdate();
+                string confirm = _inputConfirmPassword != null ? _inputConfirmPassword.text : "";
+                if (string.IsNullOrEmpty(confirm))
+                {
+                    ShowToast("Vui lòng nhập lại mật khẩu xác nhận!");
+                    return;
+                }
+
+                if (password != confirm)
+                {
+                    ShowToast("Mật khẩu xác nhận không trùng khớp!");
+                    return;
+                }
+
+                if (password.Length < 6)
+                {
+                    ShowToast("Mật khẩu phải có độ dài từ 6 ký tự trở lên!");
+                    return;
+                }
+
+                if (AuthManager.Instance != null)
+                {
+                    AuthManager.Instance.Register(username, password, (success, msg) =>
+                    {
+                        if (success)
+                        {
+                            ShowToast("Đăng ký thành công! Hãy đăng nhập ngay.", new Color32(16, 185, 129, 255));
+                            SetRegisterMode(false);
+                        }
+                        else
+                        {
+                            ShowToast(msg);
+                        }
+                    });
+                }
+                else
+                {
+                    ShowToast("Lỗi hệ thống: AuthManager chưa được khởi tạo!");
+                }
             }
-            if (_regConfirmPasswordInput != null)
+            else
             {
-                _regConfirmPasswordInput.contentType = _isRegPasswordVisible ? TMP_InputField.ContentType.Standard : TMP_InputField.ContentType.Password;
-                _regConfirmPasswordInput.ForceLabelUpdate();
-            }
-            if (_toggleRegEyeIcon != null)
-            {
-                _toggleRegEyeIcon.text = _isRegPasswordVisible ? "ẨN" : "HIỆN";
+                if (AuthManager.Instance != null)
+                {
+                    AuthManager.Instance.Login(username, password, (success, msg, account) =>
+                    {
+                        if (success)
+                        {
+                            OnLoginSuccess(account);
+                        }
+                        else
+                        {
+                            ShowToast(msg);
+                        }
+                    });
+                }
+                else
+                {
+                    ShowToast("Lỗi hệ thống: AuthManager chưa được khởi tạo!");
+                }
             }
         }
 
-        private void OnAuthSuccess(UserAccount account)
+        private void OnGuestClicked()
         {
-            if (_mainCardPanel != null) _mainCardPanel.SetActive(false);
-            if (_profilePanel != null) _profilePanel.SetActive(true);
+            if (AuthManager.Instance != null)
+            {
+                AuthManager.Instance.PlayAsGuest((success, msg, account) =>
+                {
+                    if (success)
+                    {
+                        OnLoginSuccess(account);
+                    }
+                    else
+                    {
+                        ShowToast(msg);
+                    }
+                });
+            }
+        }
+
+        private void OnLoginSuccess(UserAccount account)
+        {
+            if (_mainCardGo != null) _mainCardGo.SetActive(false);
+            if (_profileCardGo != null) _profileCardGo.SetActive(true);
 
             var saveData = SaveManager.Instance != null ? SaveManager.Instance.CurrentData : null;
-            if (_welcomeText != null) _welcomeText.text = $"Xin chào, <color=#FFD54F>{account.username}</color>!";
+            if (_txtWelcome != null) _txtWelcome.text = $"Xin chào, <color=#F59E0B>{account.username}</color>!";
             if (saveData != null)
             {
-                if (_levelText != null) _levelText.text = $"Cấp độ: {saveData.playerLevel} (EXP: {saveData.playerExp})";
-                if (_coinsText != null) _coinsText.text = $"Xu Xoài: <color=#FFA000>{saveData.mangoCoins} Xu</color>";
-                if (_unlockedMapsText != null) _unlockedMapsText.text = $"Map đã mở: {saveData.unlockedMapIds.Count} map";
+                if (_txtLevel != null) _txtLevel.text = $"Cấp độ: {saveData.playerLevel} (EXP: {saveData.playerExp})";
+                if (_txtCoins != null) _txtCoins.text = $"Xu Xoài: <color=#F59E0B>{saveData.mangoCoins} Xu</color>";
+                if (_txtMaps != null) _txtMaps.text = $"Map đã mở: {saveData.unlockedMapIds.Count} map";
             }
         }
 
-        private void OnAuthLogout()
+        private void OnLogoutClicked()
         {
-            SwitchToLoginMode();
+            if (AuthManager.Instance != null)
+            {
+                AuthManager.Instance.Logout();
+            }
+
+            if (_profileCardGo != null) _profileCardGo.SetActive(false);
+            if (_mainCardGo != null) _mainCardGo.SetActive(true);
+
+            if (_inputPassword != null) _inputPassword.text = "";
+            if (_inputConfirmPassword != null) _inputConfirmPassword.text = "";
+
+            ShowToast("Đã đăng xuất an toàn.", new Color32(59, 130, 246, 255));
         }
 
-        public void ShowToast(string message, Color color)
+        public void ShowToast(string message, Color32? customBgColor = null)
         {
-            if (_toastPopup == null || _toastMessageText == null) return;
-            _toastMessageText.text = message;
-            _toastMessageText.color = color;
+            if (_toastPopupGo == null || _toastText == null) return;
 
-            if (_toastCoroutine != null) StopCoroutine(_toastCoroutine);
-            _toastCoroutine = StartCoroutine(ToastRoutine());
+            if (_toastCoroutine != null)
+            {
+                StopCoroutine(_toastCoroutine);
+            }
+
+            _toastText.text = message;
+            var img = _toastPopupGo.GetComponent<Image>();
+            if (img != null)
+            {
+                img.color = customBgColor ?? new Color32(127, 29, 29, 245);
+            }
+
+            _toastCoroutine = StartCoroutine(ToastRoutine(3.0f));
         }
 
-        private IEnumerator ToastRoutine()
+        private IEnumerator ToastRoutine(float duration)
         {
-            _toastPopup.SetActive(true);
-            yield return new WaitForSeconds(3.5f);
-            _toastPopup.SetActive(false);
+            _toastPopupGo.SetActive(true);
+            yield return new WaitForSeconds(duration);
+            _toastPopupGo.SetActive(false);
+            _toastCoroutine = null;
         }
     }
 }

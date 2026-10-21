@@ -51,6 +51,14 @@ namespace MangoHeist.Data
             data.lastSavedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             return data;
         }
+
+        public static PlayerSaveData CreateForPlayer(string playerId, string playerName)
+        {
+            var data = CreateDefault();
+            if (!string.IsNullOrEmpty(playerId)) data.playerId = playerId;
+            if (!string.IsNullOrEmpty(playerName)) data.playerName = playerName;
+            return data;
+        }
     }
 
     /// <summary>

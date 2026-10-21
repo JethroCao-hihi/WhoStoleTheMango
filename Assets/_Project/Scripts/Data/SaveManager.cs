@@ -281,8 +281,9 @@ namespace MangoHeist.Data
         /// </summary>
         public void AddMangoCoins(int amount)
         {
+            if (amount <= 0) return;
             if (_currentData == null) LoadGame();
-            _currentData.mangoCoins = Mathf.Max(0, _currentData.mangoCoins + amount);
+            _currentData.mangoCoins += amount;
             SaveGame();
             OnCoinsChanged?.Invoke(_currentData.mangoCoins);
         }

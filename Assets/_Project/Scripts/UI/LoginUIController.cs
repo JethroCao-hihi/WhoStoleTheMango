@@ -416,7 +416,19 @@ namespace MangoHeist.UI
             inputField.textViewport = areaRt;
             inputField.textComponent = txt;
             inputField.placeholder = ph;
-            inputField.characterLimit = 20;
+            
+            if (name.Contains("Username"))
+            {
+                inputField.characterLimit = 24;
+            }
+            else if (name.Contains("Email"))
+            {
+                inputField.characterLimit = 64;
+            }
+            else
+            {
+                inputField.characterLimit = 32;
+            }
 
             if (isPassword)
             {
@@ -480,6 +492,15 @@ namespace MangoHeist.UI
                 _rowConfirmPassword.SetActive(isRegister);
             }
 
+            if (_mainCardGo != null)
+            {
+                var rt = _mainCardGo.GetComponent<RectTransform>();
+                if (rt != null)
+                {
+                    rt.sizeDelta = new Vector2(460, isRegister ? 640 : 540);
+                }
+            }
+
             if (_lblLoginBtn != null)
             {
                 _lblLoginBtn.text = isRegister ? "XÁC NHẬN ĐĂNG KÝ" : "ĐĂNG NHẬP";
@@ -512,8 +533,8 @@ namespace MangoHeist.UI
                     {
                         if (success)
                         {
-                            ShowToast("Đăng ký thành công! Hãy đăng nhập ngay.", new Color32(16, 185, 129, 255));
-                            SetRegisterMode(false);
+                            ShowToast("Đăng ký thành công! Đang vào game...", new Color32(16, 185, 129, 255));
+                            OnLoginSuccess(AuthManager.Instance.CurrentUser);
                         }
                         else
                         {

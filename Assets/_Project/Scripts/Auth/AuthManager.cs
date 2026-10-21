@@ -173,15 +173,6 @@ namespace MangoHeist.Auth
                 return;
             }
 
-            // C.6. Kiểm tra Spam / Đăng ký quá nhanh
-            float now = Time.realtimeSinceStartup;
-            if (now - _lastRegisterTimestamp < 3.0f)
-            {
-                callback?.Invoke(false, AuthErrorCodes.REG_RATE_LIMITED);
-                return;
-            }
-            _lastRegisterTimestamp = now;
-
             EnsureInitialized();
             username = username?.Trim();
             email = email?.Trim();
@@ -235,6 +226,15 @@ namespace MangoHeist.Auth
                     return;
                 }
             }
+
+            // C.6. Kiểm tra Spam / Đăng ký quá nhanh (chỉ kiểm tra khi thông tin đã hợp lệ)
+            float now = Time.realtimeSinceStartup;
+            if (now - _lastRegisterTimestamp < 3.0f)
+            {
+                callback?.Invoke(false, AuthErrorCodes.REG_RATE_LIMITED);
+                return;
+            }
+            _lastRegisterTimestamp = now;
 
             // Đăng ký thành công
             var newAccount = new UserAccount

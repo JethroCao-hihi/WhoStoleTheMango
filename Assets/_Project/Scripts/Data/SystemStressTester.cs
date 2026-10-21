@@ -37,6 +37,7 @@ namespace MangoHeist.Testing
             Test4_VerifyCorruptedFileAutoRecovery();
             Test5_VerifyInjectionRejected();
             Test6_VerifyAllErrorScenarios();
+            Test7_VerifyFullLifeCyclePersistence();
 
             Debug.Log("<color=#4CAF50><b>================ TẤT CẢ BÀI KIỂM ĐỊNH HOÀN TẤT THÀNH CÔNG ===================</b></color>");
         }
@@ -223,13 +224,15 @@ namespace MangoHeist.Testing
             // C.1. REG_USERNAME_EXISTS
             AuthManager.Instance.ResetSecurityLimits();
             string dupUser = "UniqueUser" + UnityEngine.Random.Range(1000, 9999);
-            AuthManager.Instance.Register(dupUser, "emailA@test.com", "MatKhau123", "MatKhau123", (ok, msg) =>
+            string emailA = "emailA_" + UnityEngine.Random.Range(1000, 9999) + "@test.com";
+            string emailB = "emailB_" + UnityEngine.Random.Range(1000, 9999) + "@test.com";
+            AuthManager.Instance.Register(dupUser, emailA, "MatKhau123", "MatKhau123", (ok, msg) =>
             {
-                Debug.Assert(ok, "Register initial user failed");
+                Debug.Assert(ok, "Register initial user failed: " + msg);
                 AuthManager.Instance.ResetSecurityLimits();
-                AuthManager.Instance.Register(dupUser, "emailB@test.com", "MatKhau123", "MatKhau123", (dupOk, dupMsg) =>
+                AuthManager.Instance.Register(dupUser, emailB, "MatKhau123", "MatKhau123", (dupOk, dupMsg) =>
                 {
-                    Debug.Assert(!dupOk && dupMsg == AuthErrorCodes.REG_USERNAME_EXISTS, "C1 Failed");
+                    Debug.Assert(!dupOk && dupMsg == AuthErrorCodes.REG_USERNAME_EXISTS, $"C1 Failed: dupOk={dupOk}, msg={dupMsg}");
                 });
             });
 
@@ -249,12 +252,15 @@ namespace MangoHeist.Testing
             });
 
             // C.6. REG_RATE_LIMITED
-            AuthManager.Instance.Register("FastPlayer01", "MatKhau123", (ok, msg) =>
+            string fastUser1 = "FastP" + UnityEngine.Random.Range(1000, 9999);
+            string fastUser2 = "FastP" + UnityEngine.Random.Range(1000, 9999);
+            AuthManager.Instance.Register(fastUser1, "MatKhau123", (ok, msg) =>
             {
+                Debug.Assert(ok, "Fast player 1 registration failed: " + msg);
                 // Gọi ngay lập tức không reset timestamp
-                AuthManager.Instance.Register("FastPlayer02", "MatKhau123", (spamOk, spamMsg) =>
+                AuthManager.Instance.Register(fastUser2, "MatKhau123", (spamOk, spamMsg) =>
                 {
-                    Debug.Assert(!spamOk && spamMsg == AuthErrorCodes.REG_RATE_LIMITED, "C6 Failed");
+                    Debug.Assert(!spamOk && spamMsg == AuthErrorCodes.REG_RATE_LIMITED, "C6 Failed: " + spamMsg);
                 });
             });
 
@@ -292,6 +298,73 @@ namespace MangoHeist.Testing
             });
 
             Debug.Log("<color=#10B981>✅ [THÀNH CÔNG - ĐÃ VÁ MA TRẬN LỖI]: Toàn bộ các Error Scenarios (A1-A3, B1-B5, C1-C6) đã được kiểm chứng hoạt động hoàn hảo!</color>");
+        }
+
+        public void Test7_VerifyFullLifeCyclePersistence()
+        {
+            Debug.Log("<b>[Kiểm định 7]</b> Kiểm tra toàn vẹn chu trình sống (Full Lifecycle: Tạo -> Lưu -> Chi Tiêu -> Đổi TK -> Nạp Lại)...");
+
+            AuthManager.Instance.ResetSecurityLimits();
+            string userA = "LifeA" + UnityEngine.Random.Range(1000, 9999);
+            string userB = "LifeB" + UnityEngine.Random.Range(1000, 9999);
+
+            // Bước 1: Đăng ký User A
+            AuthManager.Instance.Register(userA, "MatKhauA123", (okA, msgA) =>
+            {
+                Debug.Assert(okA, "Đăng ký User A thất bại: " + msgA);
+                var dataA = SaveManager.Instance.CurrentData;
+                Debug.Assert(dataA.mangoCoins == 100, "User A khởi đầu phải có 100 xu");
+                Debug.Assert(dataA.unlockedMapIds.Count == 1, "User A khởi đầu phải có 1 map");
+
+                // Bước 2: User A cộng 400 xu, tiêu 150 xu, mở thêm map
+                SaveManager.Instance.AddMangoCoins(400); // 500 xu
+                bool spent = SaveManager.Instance.SpendMangoCoins(150); // Còn 350 xu
+                Debug.Assert(spent, "User A chi tiêu 150 xu phải thành công");
+                SaveManager.Instance.UnlockMap("map_02_vuon_cam");
+
+                Debug.Assert(SaveManager.Instance.CurrentData.mangoCoins == 350, "User A phải còn đúng 350 xu");
+                Debug.Assert(SaveManager.Instance.CurrentData.unlockedMapIds.Count == 2, "User A phải có 2 map");
+
+                // Bước 3: Đăng xuất User A
+                AuthManager.Instance.Logout();
+                Debug.Assert(!AuthManager.Instance.IsLoggedIn, "Đăng xuất A xong IsLoggedIn phải là false");
+
+                // Bước 4: Đăng ký User B mới tinh
+                AuthManager.Instance.ResetSecurityLimits();
+                AuthManager.Instance.Register(userB, "MatKhauB456", (okB, msgB) =>
+                {
+                    Debug.Assert(okB, "Đăng ký User B thất bại: " + msgB);
+                    var dataB = SaveManager.Instance.CurrentData;
+                    Debug.Assert(dataB.mangoCoins == 100, $"User B phải có 100 xu (thực tế: {dataB.mangoCoins})");
+                    Debug.Assert(dataB.unlockedMapIds.Count == 1, "User B chỉ có 1 map khởi đầu");
+                    Debug.Assert(!dataB.unlockedMapIds.Contains("map_02_vuon_cam"), "User B không được chứa map của User A!");
+
+                    // Bước 5: Đăng xuất User B
+                    AuthManager.Instance.Logout();
+
+                    // Bước 6: Đăng nhập lại User A
+                    AuthManager.Instance.ResetSecurityLimits();
+                    AuthManager.Instance.Login(userA, "MatKhauA123", (loginAOk, loginAMsg) =>
+                    {
+                        Debug.Assert(loginAOk, "Đăng nhập lại User A thất bại: " + loginAMsg);
+                        var reloadedDataA = SaveManager.Instance.CurrentData;
+                        Debug.Assert(reloadedDataA.mangoCoins == 350, $"User A nạp lại phải còn đúng 350 xu (thực tế: {reloadedDataA.mangoCoins})");
+                        Debug.Assert(reloadedDataA.unlockedMapIds.Count == 2, $"User A nạp lại phải có 2 map (thực tế: {reloadedDataA.unlockedMapIds.Count})");
+                        Debug.Assert(reloadedDataA.unlockedMapIds.Contains("map_02_vuon_cam"), "User A nạp lại phải có map_02_vuon_cam!");
+
+                        // Bước 7: Thử đăng nhập Chế độ Khách (Guest)
+                        AuthManager.Instance.Logout();
+                        AuthManager.Instance.PlayAsGuest((guestOk, guestMsg) =>
+                        {
+                            Debug.Assert(guestOk, "Đăng nhập Khách thất bại: " + guestMsg);
+                            Debug.Assert(AuthManager.Instance.IsGuest, "Phải đang ở chế độ Khách");
+                            AuthManager.Instance.Logout();
+
+                            Debug.Log("<color=#10B981>✅ [THÀNH CÔNG - ĐÃ VÁ TOÀN VẸN CHU TRÌNH SỐNG]: Dữ liệu Đăng ký, Lưu trữ, Tiêu tiền, Đổi tài khoản và Nạp lại hoạt động 100% chuẩn xác!</color>");
+                        });
+                    });
+                });
+            });
         }
     }
 }

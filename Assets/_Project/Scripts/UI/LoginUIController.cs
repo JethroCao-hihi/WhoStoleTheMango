@@ -252,12 +252,24 @@ namespace MangoHeist.UI
             toastShadow.effectColor = new Color32(0, 0, 0, 160);
             toastShadow.effectDistance = new Vector2(0, -4);
 
-            _toastText = CreateTextElement("ToastMessage", _toastPopupGo.transform, "Thông báo lỗi!", 14, FontStyles.Normal, Color.white, 70);
-            var toastTxtRt = _toastText.GetComponent<RectTransform>();
-            toastTxtRt.offsetMin = new Vector2(16, 8);
-            toastTxtRt.offsetMax = new Vector2(-16, -8);
+            var toastTxtGo = new GameObject("ToastMessage", typeof(RectTransform));
+            toastTxtGo.layer = uiLayer;
+            toastTxtGo.transform.SetParent(_toastPopupGo.transform, false);
+
+            var toastTxtRt = toastTxtGo.GetComponent<RectTransform>();
+            toastTxtRt.anchorMin = Vector2.zero;
+            toastTxtRt.anchorMax = Vector2.one;
+            toastTxtRt.offsetMin = new Vector2(20, 10);
+            toastTxtRt.offsetMax = new Vector2(-20, -10);
+
+            _toastText = toastTxtGo.AddComponent<TextMeshProUGUI>();
+            _toastText.text = "";
+            _toastText.fontSize = 15f;
+            _toastText.fontStyle = FontStyles.Bold;
+            _toastText.color = Color.white;
             _toastText.alignment = TextAlignmentOptions.MidlineLeft;
             _toastText.enableWordWrapping = true;
+            _toastText.overflowMode = TextOverflowModes.Ellipsis;
 
             _toastPopupGo.SetActive(false);
 

@@ -115,7 +115,7 @@ namespace MangoHeist.Testing
 
             try
             {
-                string playerId = SaveManager.Instance.CurrentPlayerId;
+                string playerId = SaveManager.Instance.ActivePlayerId;
                 string savePath = Path.Combine(Application.persistentDataPath, $"player_save_{playerId}.json");
 
                 File.WriteAllText(savePath, "{ \"mangoCoins\": 99999, corrupted_json... ");

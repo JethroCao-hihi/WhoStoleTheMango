@@ -53,6 +53,17 @@ namespace MangoHeist.Data
 
         [SerializeField] private string _activePlayerId = "default";
         public string ActivePlayerId => _activePlayerId;
+        public string CurrentPlayerId => _activePlayerId;
+
+        /// <summary>
+        /// Tạo mới file save cho người chơi
+        /// </summary>
+        public void NewGame(string playerId, string playerName)
+        {
+            _activePlayerId = string.IsNullOrWhiteSpace(playerId) ? "guest" : playerId.Trim();
+            _currentData = PlayerSaveData.CreateForPlayer(_activePlayerId, string.IsNullOrWhiteSpace(playerName) ? "Người Chơi Mới" : playerName.Trim());
+            SaveGame();
+        }
 
         // Sự kiện thông báo để UI tự động cập nhật
         public event Action<PlayerSaveData> OnDataLoaded;

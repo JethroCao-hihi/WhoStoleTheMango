@@ -110,19 +110,41 @@ namespace MangoHeist.UI
         [ContextMenu("Dựng lại toàn bộ UI (Procedural Rebuild)")]
         public void RebuildProceduralUI()
         {
+            // Đảm bảo Canvas & CanvasScaler được cấu hình chuẩn
+            var canvas = GetComponent<Canvas>();
+            if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+
+            var scaler = GetComponent<CanvasScaler>();
+            if (scaler == null) scaler = gameObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920, 1080);
+            scaler.matchWidthOrHeight = 0.5f;
+
+            if (GetComponent<GraphicRaycaster>() == null)
+            {
+                gameObject.AddComponent<GraphicRaycaster>();
+            }
+
             // ══════════════════════════════════════════════════════════════════
             // QUY TẮC 1: XÓA SẠCH MỌI GAMEOBJECT / UI CŨ TRÊN CANVAS
             // ══════════════════════════════════════════════════════════════════
-            for (int i = transform.childCount - 1; i >= 0; i--)
+            while (transform.childCount > 0)
             {
-                var child = transform.GetChild(i).gameObject;
+                var child = transform.GetChild(0).gameObject;
                 child.SetActive(false);
 #if UNITY_EDITOR
                 if (!Application.isPlaying)
+                {
                     DestroyImmediate(child);
+                }
                 else
+                {
+                    child.transform.SetParent(null);
                     Destroy(child);
+                }
 #else
+                child.transform.SetParent(null);
                 Destroy(child);
 #endif
             }

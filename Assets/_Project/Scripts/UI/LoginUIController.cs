@@ -376,7 +376,7 @@ namespace MangoHeist.UI
             return inputField;
         }
 
-        private Button CreateButton(string name, Transform parent, string label, Color32 bgColor, float height, out TextMeshProUGUI labelTmp)
+        private Button CreateButton(string name, Transform parent, string label, Color bgColor, float height, out TextMeshProUGUI labelTmp)
         {
             var btnGo = new GameObject(name);
             btnGo.transform.SetParent(parent, false);
@@ -495,11 +495,11 @@ namespace MangoHeist.UI
             {
                 if (AuthManager.Instance != null)
                 {
-                    AuthManager.Instance.Login(username, password, (success, msg, account) =>
+                    AuthManager.Instance.Login(username, password, (success, msg) =>
                     {
                         if (success)
                         {
-                            OnLoginSuccess(account);
+                            OnLoginSuccess(AuthManager.Instance.CurrentUser);
                         }
                         else
                         {
@@ -518,11 +518,11 @@ namespace MangoHeist.UI
         {
             if (AuthManager.Instance != null)
             {
-                AuthManager.Instance.PlayAsGuest((success, msg, account) =>
+                AuthManager.Instance.PlayAsGuest((success, msg) =>
                 {
                     if (success)
                     {
-                        OnLoginSuccess(account);
+                        OnLoginSuccess(AuthManager.Instance.CurrentUser);
                     }
                     else
                     {

@@ -110,7 +110,10 @@ namespace MangoHeist.UI
         [ContextMenu("Dựng lại toàn bộ UI (Procedural Rebuild)")]
         public void RebuildProceduralUI()
         {
-            // Đảm bảo Canvas & CanvasScaler được cấu hình chuẩn
+            // Đảm bảo Canvas & CanvasScaler được cấu hình chuẩn với Layer UI
+            int uiLayer = LayerMask.NameToLayer("UI");
+            gameObject.layer = uiLayer;
+
             var canvas = GetComponent<Canvas>();
             if (canvas == null) canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -150,9 +153,10 @@ namespace MangoHeist.UI
             }
 
             // 1. NỀN MÀU #111827 FULL MÀN HÌNH (KHÔNG DÙNG SPRITE ẢNH VẼ SẴN)
-            _backgroundGo = new GameObject("Background");
+            _backgroundGo = new GameObject("Background", typeof(RectTransform));
+            _backgroundGo.layer = uiLayer;
             _backgroundGo.transform.SetParent(transform, false);
-            var bgRt = _backgroundGo.AddComponent<RectTransform>();
+            var bgRt = _backgroundGo.GetComponent<RectTransform>();
             bgRt.anchorMin = Vector2.zero;
             bgRt.anchorMax = Vector2.one;
             bgRt.offsetMin = Vector2.zero;
@@ -165,9 +169,10 @@ namespace MangoHeist.UI
             // ══════════════════════════════════════════════════════════════════
             // QUY TẮC 2: KHUNG CHÍNH MAINCARD (460 x 560, KHÔNG BỊ CO WIDTH = 0)
             // ══════════════════════════════════════════════════════════════════
-            _mainCardGo = new GameObject("MainCard");
+            _mainCardGo = new GameObject("MainCard", typeof(RectTransform));
+            _mainCardGo.layer = uiLayer;
             _mainCardGo.transform.SetParent(transform, false);
-            var cardRt = _mainCardGo.AddComponent<RectTransform>();
+            var cardRt = _mainCardGo.GetComponent<RectTransform>();
             cardRt.anchorMin = new Vector2(0.5f, 0.5f);
             cardRt.anchorMax = new Vector2(0.5f, 0.5f);
             cardRt.pivot = new Vector2(0.5f, 0.5f);
@@ -222,9 +227,10 @@ namespace MangoHeist.UI
             // ══════════════════════════════════════════════════════════════════
             // QUY TẮC 4: HỘP THÔNG BÁO LỖI THẬT (TOAST NOTIFICATION)
             // ══════════════════════════════════════════════════════════════════
-            _toastPopupGo = new GameObject("ToastPopup");
+            _toastPopupGo = new GameObject("ToastPopup", typeof(RectTransform));
+            _toastPopupGo.layer = uiLayer;
             _toastPopupGo.transform.SetParent(transform, false);
-            var toastRt = _toastPopupGo.AddComponent<RectTransform>();
+            var toastRt = _toastPopupGo.GetComponent<RectTransform>();
             toastRt.anchorMin = new Vector2(1, 0);
             toastRt.anchorMax = new Vector2(1, 0);
             toastRt.pivot = new Vector2(1, 0);
@@ -248,7 +254,7 @@ namespace MangoHeist.UI
             toastTxtRt.offsetMin = new Vector2(16, 8);
             toastTxtRt.offsetMax = new Vector2(-16, -8);
             _toastText.alignment = TextAlignmentOptions.MidlineLeft;
-            _toastText.enableWordWrapping = true; // Toast cho phép xuống dòng nếu câu thông báo dài
+            _toastText.enableWordWrapping = true;
 
             _toastPopupGo.SetActive(false);
 
@@ -262,9 +268,11 @@ namespace MangoHeist.UI
 
         private void BuildProfileCard()
         {
-            _profileCardGo = new GameObject("ProfileCard");
+            int uiLayer = LayerMask.NameToLayer("UI");
+            _profileCardGo = new GameObject("ProfileCard", typeof(RectTransform));
+            _profileCardGo.layer = uiLayer;
             _profileCardGo.transform.SetParent(transform, false);
-            var pRt = _profileCardGo.AddComponent<RectTransform>();
+            var pRt = _profileCardGo.GetComponent<RectTransform>();
             pRt.anchorMin = new Vector2(0.5f, 0.5f);
             pRt.anchorMax = new Vector2(0.5f, 0.5f);
             pRt.pivot = new Vector2(0.5f, 0.5f);
@@ -304,7 +312,8 @@ namespace MangoHeist.UI
 
         private TextMeshProUGUI CreateTextElement(string name, Transform parent, string text, float fontSize, FontStyles style, Color color, float height)
         {
-            var go = new GameObject(name);
+            var go = new GameObject(name, typeof(RectTransform));
+            go.layer = LayerMask.NameToLayer("UI");
             go.transform.SetParent(parent, false);
 
             var le = go.AddComponent<LayoutElement>();
@@ -324,7 +333,9 @@ namespace MangoHeist.UI
 
         private TMP_InputField CreateInputField(string name, Transform parent, string placeholderText, bool isPassword, out GameObject rowGo)
         {
-            rowGo = new GameObject(name);
+            int uiLayer = LayerMask.NameToLayer("UI");
+            rowGo = new GameObject(name, typeof(RectTransform));
+            rowGo.layer = uiLayer;
             rowGo.transform.SetParent(parent, false);
 
             var le = rowGo.AddComponent<LayoutElement>();
@@ -340,9 +351,10 @@ namespace MangoHeist.UI
             outline.effectDistance = new Vector2(1, -1);
 
             // Text Area Container với RectMask2D (cách lề trái 16px, trên dưới 6px)
-            var textAreaGo = new GameObject("Text Area");
+            var textAreaGo = new GameObject("Text Area", typeof(RectTransform));
+            textAreaGo.layer = uiLayer;
             textAreaGo.transform.SetParent(rowGo.transform, false);
-            var areaRt = textAreaGo.AddComponent<RectTransform>();
+            var areaRt = textAreaGo.GetComponent<RectTransform>();
             areaRt.anchorMin = Vector2.zero;
             areaRt.anchorMax = Vector2.one;
             areaRt.offsetMin = new Vector2(16, 6);
@@ -350,9 +362,10 @@ namespace MangoHeist.UI
             textAreaGo.AddComponent<RectMask2D>();
 
             // Text Component
-            var textGo = new GameObject("Text");
+            var textGo = new GameObject("Text", typeof(RectTransform));
+            textGo.layer = uiLayer;
             textGo.transform.SetParent(textAreaGo.transform, false);
-            var textRt = textGo.AddComponent<RectTransform>();
+            var textRt = textGo.GetComponent<RectTransform>();
             textRt.anchorMin = Vector2.zero;
             textRt.anchorMax = Vector2.one;
             textRt.offsetMin = Vector2.zero;
@@ -366,9 +379,10 @@ namespace MangoHeist.UI
             txt.overflowMode = TextOverflowModes.Overflow;
 
             // Placeholder Component
-            var phGo = new GameObject("Placeholder");
+            var phGo = new GameObject("Placeholder", typeof(RectTransform));
+            phGo.layer = uiLayer;
             phGo.transform.SetParent(textAreaGo.transform, false);
-            var phRt = phGo.AddComponent<RectTransform>();
+            var phRt = phGo.GetComponent<RectTransform>();
             phRt.anchorMin = Vector2.zero;
             phRt.anchorMax = Vector2.one;
             phRt.offsetMin = Vector2.zero;
@@ -400,7 +414,8 @@ namespace MangoHeist.UI
 
         private Button CreateButton(string name, Transform parent, string label, Color bgColor, float height, out TextMeshProUGUI labelTmp)
         {
-            var btnGo = new GameObject(name);
+            var btnGo = new GameObject(name, typeof(RectTransform));
+            btnGo.layer = LayerMask.NameToLayer("UI");
             btnGo.transform.SetParent(parent, false);
 
             var le = btnGo.AddComponent<LayoutElement>();
@@ -417,9 +432,10 @@ namespace MangoHeist.UI
             colors.pressedColor = bgColor * 0.85f;
             btn.colors = colors;
 
-            var txtGo = new GameObject("Text");
+            var txtGo = new GameObject("Text", typeof(RectTransform));
+            txtGo.layer = LayerMask.NameToLayer("UI");
             txtGo.transform.SetParent(btnGo.transform, false);
-            var txtRt = txtGo.AddComponent<RectTransform>();
+            var txtRt = txtGo.GetComponent<RectTransform>();
             txtRt.anchorMin = Vector2.zero;
             txtRt.anchorMax = Vector2.one;
             txtRt.offsetMin = Vector2.zero;

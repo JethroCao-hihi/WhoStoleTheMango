@@ -200,7 +200,7 @@ namespace MangoHeist.UI
             }
             if (_toggleLoginEyeIcon != null)
             {
-                _toggleLoginEyeIcon.text = _isLoginPasswordVisible ? "🔒" : "👁";
+                _toggleLoginEyeIcon.text = _isLoginPasswordVisible ? "ẨN" : "HIỆN";
             }
         }
 
@@ -219,7 +219,7 @@ namespace MangoHeist.UI
             }
             if (_toggleRegEyeIcon != null)
             {
-                _toggleRegEyeIcon.text = _isRegPasswordVisible ? "🔒" : "👁";
+                _toggleRegEyeIcon.text = _isRegPasswordVisible ? "ẨN" : "HIỆN";
             }
         }
 

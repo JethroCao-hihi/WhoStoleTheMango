@@ -29,8 +29,12 @@ public class PhotonConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
     private bool sprintHeld;
     private bool crouchHeld;
     private bool rescueHeld;
+    private bool launchedAutomatically;
     private static PhotonConnectionTest instance;
+
     private const string RoomName = "MangoConnectionTest";
+
+    public static bool AutoStartOnNextScene { get; set; }
 
     private readonly List<NetworkObject> spawnedMangoes =
         new List<NetworkObject>();
@@ -56,6 +60,17 @@ public class PhotonConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
         }
 
         DontDestroyOnLoad(gameObject);
+    }
+
+    private void Start()
+    {
+        if (!AutoStartOnNextScene)
+            return;
+
+        AutoStartOnNextScene = false;
+        launchedAutomatically = true;
+
+        StartHostOrClient(GameMode.AutoHostOrClient);
     }
 
     private void Update()
@@ -254,39 +269,29 @@ public class PhotonConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
 
     private void OnGUI()
     {
-        GUILayout.BeginArea(
-            new Rect(20, 20, 300, 220),
-            GUI.skin.box
-        );
-
-        GUILayout.Label("MANGO CONNECTION TEST");
-        GUILayout.Space(10);
-
-        GUILayout.Label("Status: " + status);
-
-        if (!string.IsNullOrEmpty(lastError))
-        {
-            GUILayout.Label("Error: " + lastError);
-        }
-
-        GUILayout.Space(10);
-
         GUI.enabled = !isConnecting &&
-                      (runner == null || !runner.IsRunning);
+              (runner == null || !runner.IsRunning);
 
-        if (GUILayout.Button("HOST", GUILayout.Height(45)))
+        if (launchedAutomatically)
         {
-            StartHostOrClient(GameMode.Host);
+            if (!isConnecting &&
+                (runner == null || !runner.IsRunning) &&
+                GUILayout.Button("THỬ KẾT NỐI LẠI", GUILayout.Height(40)))
+            {
+                StartHostOrClient(GameMode.AutoHostOrClient);
+            }
         }
-
-        if (GUILayout.Button("JOIN", GUILayout.Height(45)))
+        else
         {
-            StartHostOrClient(GameMode.Client);
+            // Giữ nút cho việc kiểm thử thủ công trong Editor.
+            if (GUILayout.Button("HOST", GUILayout.Height(45)))
+                StartHostOrClient(GameMode.Host);
+
+            if (GUILayout.Button("JOIN", GUILayout.Height(45)))
+                StartHostOrClient(GameMode.Client);
         }
 
         GUI.enabled = true;
-
-        GUILayout.EndArea();
     }
 
 

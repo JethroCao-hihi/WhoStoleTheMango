@@ -154,7 +154,18 @@ namespace MangoHeist.UI
 #endif
             }
 
-            // 1. NỀN MÀU #111827 FULL MÀN HÌNH (KHÔNG DÙNG SPRITE ẢNH VẼ SẴN)
+            // ══════════════════════════════════════════════════════════════════
+            // TẢI TOÀN BỘ SPRITE ĐỒ HỌA THẬT TỪ THƯ MỤC RESOURCES/UI
+            // ══════════════════════════════════════════════════════════════════
+            var spBg = Resources.Load<Sprite>("UI/UI_Background_Garden");
+            var spTitle = Resources.Load<Sprite>("UI/UI_Title_Logo");
+            var spCard = Resources.Load<Sprite>("UI/UI_MainCard_BambooFrame");
+            var spSlot = Resources.Load<Sprite>("UI/UI_Input_Slot");
+            var spBtnGreen = Resources.Load<Sprite>("UI/UI_Btn_Green");
+            var spBtnBlue = Resources.Load<Sprite>("UI/UI_Btn_Blue");
+            var spBtnGrey = Resources.Load<Sprite>("UI/UI_Btn_Grey");
+
+            // 1. NỀN VƯỜN XOÀI FULL MÀN HÌNH
             _backgroundGo = new GameObject("Background", typeof(RectTransform));
             _backgroundGo.layer = uiLayer;
             _backgroundGo.transform.SetParent(transform, false);
@@ -165,11 +176,19 @@ namespace MangoHeist.UI
             bgRt.offsetMax = Vector2.zero;
 
             var bgImg = _backgroundGo.AddComponent<Image>();
-            bgImg.sprite = null;
-            bgImg.color = new Color32(17, 24, 39, 255); // #111827
+            if (spBg != null)
+            {
+                bgImg.sprite = spBg;
+                bgImg.color = Color.white;
+            }
+            else
+            {
+                bgImg.sprite = null;
+                bgImg.color = new Color32(17, 24, 39, 255); // Fallback #111827
+            }
 
             // ══════════════════════════════════════════════════════════════════
-            // QUY TẮC 2: KHUNG CHÍNH MAINCARD (460 x 560, KHÔNG BỊ CO WIDTH = 0)
+            // 2. KHUNG CHÍNH MAINCARD (KHUNG TRE NỨA VIỀN LÁ VÀ QUẢ XOÀI)
             // ══════════════════════════════════════════════════════════════════
             _mainCardGo = new GameObject("MainCard", typeof(RectTransform));
             _mainCardGo.layer = uiLayer;
@@ -178,25 +197,33 @@ namespace MangoHeist.UI
             cardRt.anchorMin = new Vector2(0.5f, 0.5f);
             cardRt.anchorMax = new Vector2(0.5f, 0.5f);
             cardRt.pivot = new Vector2(0.5f, 0.5f);
-            cardRt.sizeDelta = new Vector2(460, 560);
-            cardRt.anchoredPosition = Vector2.zero;
+            cardRt.sizeDelta = new Vector2(490, 580);
+            cardRt.anchoredPosition = new Vector2(0, -25);
 
             var cardImg = _mainCardGo.AddComponent<Image>();
-            cardImg.sprite = null;
-            cardImg.color = new Color32(31, 41, 55, 255); // #1F2937
-
-            var cardOutline = _mainCardGo.AddComponent<Outline>();
-            cardOutline.effectColor = new Color32(55, 65, 81, 255); // #374151
-            cardOutline.effectDistance = new Vector2(2, -2);
+            if (spCard != null)
+            {
+                cardImg.sprite = spCard;
+                cardImg.type = Image.Type.Sliced;
+                cardImg.color = Color.white;
+            }
+            else
+            {
+                cardImg.sprite = null;
+                cardImg.color = new Color32(31, 41, 55, 255);
+                var cardOutline = _mainCardGo.AddComponent<Outline>();
+                cardOutline.effectColor = new Color32(55, 65, 81, 255);
+                cardOutline.effectDistance = new Vector2(2, -2);
+            }
 
             var cardShadow = _mainCardGo.AddComponent<Shadow>();
-            cardShadow.effectColor = new Color32(0, 0, 0, 120);
-            cardShadow.effectDistance = new Vector2(0, -8);
+            cardShadow.effectColor = new Color32(0, 0, 0, 160);
+            cardShadow.effectDistance = new Vector2(0, -10);
 
-            // Cấu hình VerticalLayoutGroup cực chuẩn
+            // Cấu hình VerticalLayoutGroup căn chỉnh lọt lòng khung tre
             var vlg = _mainCardGo.AddComponent<VerticalLayoutGroup>();
-            vlg.padding = new RectOffset(35, 35, 35, 35);
-            vlg.spacing = 16;
+            vlg.padding = new RectOffset(48, 48, 40, 42);
+            vlg.spacing = 13;
             vlg.childAlignment = TextAnchor.UpperCenter;
             vlg.childControlWidth = true;
             vlg.childForceExpandWidth = true;
@@ -204,27 +231,47 @@ namespace MangoHeist.UI
             vlg.childForceExpandHeight = false;
 
             // ══════════════════════════════════════════════════════════════════
-            // QUY TẮC 3: CÁC COMPONENT THẬT TRÊN GIAO DIỆN
+            // 3. TIÊU ĐỀ LOGO GAME 3D & SUBTITLE
             // ══════════════════════════════════════════════════════════════════
+            if (spTitle != null)
+            {
+                var logoGo = new GameObject("Title_Logo", typeof(RectTransform));
+                logoGo.layer = uiLayer;
+                logoGo.transform.SetParent(_mainCardGo.transform, false);
+                var le = logoGo.AddComponent<LayoutElement>();
+                le.preferredHeight = 110f;
+                le.flexibleWidth = 1f;
 
-            // 1. Header (Title & Subtitle)
-            var titleTxt = CreateTextElement("Title", _mainCardGo.transform, "TRỘM XOÀI ĐẠI CHIẾN", 28, FontStyles.Bold, new Color32(245, 158, 11, 255), 45);
-            _subtitleText = CreateTextElement("Subtitle", _mainCardGo.transform, "MANGO HEIST - HỆ THỐNG ĐĂNG NHẬP", 13, FontStyles.Normal, new Color32(156, 163, 175, 255), 25);
+                var logoImg = logoGo.AddComponent<Image>();
+                logoImg.sprite = spTitle;
+                logoImg.preserveAspect = true;
+                logoImg.color = Color.white;
+            }
+            else
+            {
+                CreateTextElement("Title", _mainCardGo.transform, "TRỘM XOÀI ĐẠI CHIẾN", 28, FontStyles.Bold, new Color32(245, 158, 11, 255), 45);
+            }
 
-            // 2. Input Fields
-            _inputUsername = CreateInputField("Input_Username", _mainCardGo.transform, "Nhập tên tài khoản (6-24 ký tự)...", false, out _);
-            _inputEmail = CreateInputField("Input_Email", _mainCardGo.transform, "Nhập email (tùy chọn)...", false, out _rowEmail);
-            _inputPassword = CreateInputField("Input_Password", _mainCardGo.transform, "Nhập mật khẩu (từ 8 ký tự)...", true, out _);
-            _inputConfirmPassword = CreateInputField("Input_ConfirmPassword", _mainCardGo.transform, "Nhập lại mật khẩu...", true, out _rowConfirmPassword);
+            _subtitleText = CreateTextElement("Subtitle", _mainCardGo.transform, "MANGO HEIST - HỆ THỐNG ĐĂNG NHẬP", 13, FontStyles.Bold, new Color32(254, 240, 138, 255), 22);
 
-            // 3. Buttons
-            var btnLogin = CreateButton("Btn_Login", _mainCardGo.transform, "ĐĂNG NHẬP", new Color32(16, 185, 129, 255), 52, out _lblLoginBtn);
+            // ══════════════════════════════════════════════════════════════════
+            // 4. CÁC Ô NHẬP LIỆU (KHUNG RÃNH GỖ KHẮC CHÌM)
+            // ══════════════════════════════════════════════════════════════════
+            _inputUsername = CreateInputField("Input_Username", _mainCardGo.transform, "Nhập tên tài khoản (6-24 ký tự)...", false, spSlot, out _);
+            _inputEmail = CreateInputField("Input_Email", _mainCardGo.transform, "Nhập email (tùy chọn)...", false, spSlot, out _rowEmail);
+            _inputPassword = CreateInputField("Input_Password", _mainCardGo.transform, "Nhập mật khẩu (từ 8 ký tự)...", true, spSlot, out _);
+            _inputConfirmPassword = CreateInputField("Input_ConfirmPassword", _mainCardGo.transform, "Nhập lại mật khẩu...", true, spSlot, out _rowConfirmPassword);
+
+            // ══════════════════════════════════════════════════════════════════
+            // 5. CÁC NÚT BẤM (BỘ NÚT 3 MÀU: XANH LÁ, XANH DƯƠNG, XÁM ĐÁ)
+            // ══════════════════════════════════════════════════════════════════
+            var btnLogin = CreateButton("Btn_Login", _mainCardGo.transform, "ĐĂNG NHẬP", spBtnGreen, new Color32(16, 185, 129, 255), 52, out _lblLoginBtn);
             btnLogin.onClick.AddListener(OnSubmitClicked);
 
-            var btnSwitch = CreateButton("Btn_SwitchMode", _mainCardGo.transform, "ĐĂNG KÝ TÀI KHOẢN MỚI", new Color32(59, 130, 246, 255), 48, out _lblSwitchModeBtn);
+            var btnSwitch = CreateButton("Btn_SwitchMode", _mainCardGo.transform, "ĐĂNG KÝ TÀI KHOẢN MỚI", spBtnBlue, new Color32(59, 130, 246, 255), 48, out _lblSwitchModeBtn);
             btnSwitch.onClick.AddListener(() => SetRegisterMode(!_isRegisterMode));
 
-            var btnGuest = CreateButton("Btn_Guest", _mainCardGo.transform, "CHƠI KHÁCH / OFFLINE (BỎ QUA)", new Color32(75, 85, 99, 255), 44, out _);
+            var btnGuest = CreateButton("Btn_Guest", _mainCardGo.transform, "CHƠI KHÁCH / OFFLINE (BỎ QUA)", spBtnGrey, new Color32(75, 85, 99, 255), 44, out _);
             btnGuest.onClick.AddListener(OnGuestClicked);
 
             // ══════════════════════════════════════════════════════════════════
@@ -283,6 +330,10 @@ namespace MangoHeist.UI
 
         private void BuildProfileCard()
         {
+            var spCard = Resources.Load<Sprite>("UI/UI_MainCard_BambooFrame");
+            var spBtnGreen = Resources.Load<Sprite>("UI/UI_Btn_Green");
+            var spBtnGrey = Resources.Load<Sprite>("UI/UI_Btn_Grey");
+
             int uiLayer = LayerMask.NameToLayer("UI");
             _profileCardGo = new GameObject("ProfileCard", typeof(RectTransform));
             _profileCardGo.layer = uiLayer;
@@ -291,19 +342,27 @@ namespace MangoHeist.UI
             pRt.anchorMin = new Vector2(0.5f, 0.5f);
             pRt.anchorMax = new Vector2(0.5f, 0.5f);
             pRt.pivot = new Vector2(0.5f, 0.5f);
-            pRt.sizeDelta = new Vector2(460, 480);
-            pRt.anchoredPosition = Vector2.zero;
+            pRt.sizeDelta = new Vector2(490, 520);
+            pRt.anchoredPosition = new Vector2(0, -20);
 
             var pImg = _profileCardGo.AddComponent<Image>();
-            pImg.color = new Color32(31, 41, 55, 255);
-
-            var pOut = _profileCardGo.AddComponent<Outline>();
-            pOut.effectColor = new Color32(16, 185, 129, 255);
-            pOut.effectDistance = new Vector2(2, -2);
+            if (spCard != null)
+            {
+                pImg.sprite = spCard;
+                pImg.type = Image.Type.Sliced;
+                pImg.color = Color.white;
+            }
+            else
+            {
+                pImg.color = new Color32(31, 41, 55, 255);
+                var pOut = _profileCardGo.AddComponent<Outline>();
+                pOut.effectColor = new Color32(16, 185, 129, 255);
+                pOut.effectDistance = new Vector2(2, -2);
+            }
 
             var vlg = _profileCardGo.AddComponent<VerticalLayoutGroup>();
-            vlg.padding = new RectOffset(35, 35, 35, 35);
-            vlg.spacing = 16;
+            vlg.padding = new RectOffset(48, 48, 45, 42);
+            vlg.spacing = 14;
             vlg.childAlignment = TextAnchor.UpperCenter;
             vlg.childControlWidth = true;
             vlg.childForceExpandWidth = true;
@@ -312,14 +371,14 @@ namespace MangoHeist.UI
 
             CreateTextElement("P_Title", _profileCardGo.transform, "MANGO HEIST - HỒ SƠ", 24, FontStyles.Bold, new Color32(245, 158, 11, 255), 40);
             _txtWelcome = CreateTextElement("P_Welcome", _profileCardGo.transform, "Xin chào người chơi!", 18, FontStyles.Bold, Color.white, 30);
-            _txtLevel = CreateTextElement("P_Level", _profileCardGo.transform, "Cấp độ: 1", 16, FontStyles.Normal, new Color32(156, 163, 175, 255), 26);
+            _txtLevel = CreateTextElement("P_Level", _profileCardGo.transform, "Cấp độ: 1", 16, FontStyles.Normal, new Color32(254, 240, 138, 255), 26);
             _txtCoins = CreateTextElement("P_Coins", _profileCardGo.transform, "Xu Xoài: 100 Xu", 18, FontStyles.Bold, new Color32(245, 158, 11, 255), 30);
             _txtMaps = CreateTextElement("P_Maps", _profileCardGo.transform, "Map đã mở: 1 map", 16, FontStyles.Normal, new Color32(16, 185, 129, 255), 26);
 
-            var btnLobby = CreateButton("Btn_Lobby", _profileCardGo.transform, "VÀO SẢNH CHỜ (LOBBY)", new Color32(16, 185, 129, 255), 50, out _);
+            var btnLobby = CreateButton("Btn_Lobby", _profileCardGo.transform, "VÀO SẢNH CHỜ (LOBBY)", spBtnGreen, new Color32(16, 185, 129, 255), 52, out _);
             btnLobby.onClick.AddListener(() => ShowToast("Chức năng Multiplayer đang phát triển!", new Color32(59, 130, 246, 255)));
 
-            var btnLogout = CreateButton("Btn_Logout", _profileCardGo.transform, "ĐĂNG XUẤT", new Color32(239, 68, 68, 255), 44, out _);
+            var btnLogout = CreateButton("Btn_Logout", _profileCardGo.transform, "ĐĂNG XUẤT", spBtnGrey, new Color32(239, 68, 68, 255), 44, out _);
             btnLogout.onClick.AddListener(OnLogoutClicked);
 
             _profileCardGo.SetActive(false);
@@ -346,7 +405,7 @@ namespace MangoHeist.UI
             return tmp;
         }
 
-        private TMP_InputField CreateInputField(string name, Transform parent, string placeholderText, bool isPassword, out GameObject rowGo)
+        private TMP_InputField CreateInputField(string name, Transform parent, string placeholderText, bool isPassword, Sprite slotSprite, out GameObject rowGo)
         {
             int uiLayer = LayerMask.NameToLayer("UI");
             rowGo = new GameObject(name, typeof(RectTransform));
@@ -354,26 +413,34 @@ namespace MangoHeist.UI
             rowGo.transform.SetParent(parent, false);
 
             var le = rowGo.AddComponent<LayoutElement>();
-            le.preferredHeight = 50f;
+            le.preferredHeight = 52f;
             le.flexibleWidth = 1f;
 
             var rowImg = rowGo.AddComponent<Image>();
-            rowImg.sprite = null;
-            rowImg.color = new Color32(55, 65, 81, 255); // #374151
+            if (slotSprite != null)
+            {
+                rowImg.sprite = slotSprite;
+                rowImg.type = Image.Type.Sliced;
+                rowImg.color = Color.white;
+            }
+            else
+            {
+                rowImg.sprite = null;
+                rowImg.color = new Color32(55, 65, 81, 255);
+                var outline = rowGo.AddComponent<Outline>();
+                outline.effectColor = new Color32(75, 85, 99, 255);
+                outline.effectDistance = new Vector2(1, -1);
+            }
 
-            var outline = rowGo.AddComponent<Outline>();
-            outline.effectColor = new Color32(75, 85, 99, 255); // #4B5563
-            outline.effectDistance = new Vector2(1, -1);
-
-            // Text Area Container với RectMask2D (cách lề trái 16px, trên dưới 6px)
+            // Text Area Container với RectMask2D (cách lề trái 22px, lề phải 22px, trên dưới 6px)
             var textAreaGo = new GameObject("Text Area", typeof(RectTransform));
             textAreaGo.layer = uiLayer;
             textAreaGo.transform.SetParent(rowGo.transform, false);
             var areaRt = textAreaGo.GetComponent<RectTransform>();
             areaRt.anchorMin = Vector2.zero;
             areaRt.anchorMax = Vector2.one;
-            areaRt.offsetMin = new Vector2(16, 6);
-            areaRt.offsetMax = new Vector2(-16, -6);
+            areaRt.offsetMin = new Vector2(22, 6);
+            areaRt.offsetMax = new Vector2(-22, -6);
             textAreaGo.AddComponent<RectMask2D>();
 
             // Text Component
@@ -388,7 +455,7 @@ namespace MangoHeist.UI
 
             var txt = textGo.AddComponent<TextMeshProUGUI>();
             txt.fontSize = 16f;
-            txt.color = Color.white;
+            txt.color = new Color32(255, 251, 235, 255); // #FFFBEB warm cream ivory
             txt.alignment = TextAlignmentOptions.MidlineLeft;
             txt.enableWordWrapping = false;
             txt.overflowMode = TextOverflowModes.Overflow;
@@ -405,9 +472,9 @@ namespace MangoHeist.UI
 
             var ph = phGo.AddComponent<TextMeshProUGUI>();
             ph.text = placeholderText;
-            ph.fontSize = 16f;
+            ph.fontSize = 15f;
             ph.fontStyle = FontStyles.Italic;
-            ph.color = new Color32(156, 163, 175, 180); // #9CA3AF
+            ph.color = new Color32(209, 167, 117, 210); // #D1A775 golden amber placeholder
             ph.alignment = TextAlignmentOptions.MidlineLeft;
             ph.enableWordWrapping = false;
             ph.overflowMode = TextOverflowModes.Overflow;
@@ -416,6 +483,7 @@ namespace MangoHeist.UI
             inputField.textViewport = areaRt;
             inputField.textComponent = txt;
             inputField.placeholder = ph;
+            inputField.selectionColor = new Color32(245, 158, 11, 100);
             
             if (name.Contains("Username"))
             {
@@ -439,7 +507,7 @@ namespace MangoHeist.UI
             return inputField;
         }
 
-        private Button CreateButton(string name, Transform parent, string label, Color bgColor, float height, out TextMeshProUGUI labelTmp)
+        private Button CreateButton(string name, Transform parent, string label, Sprite btnSprite, Color fallbackColor, float height, out TextMeshProUGUI labelTmp)
         {
             var btnGo = new GameObject(name, typeof(RectTransform));
             btnGo.layer = LayerMask.NameToLayer("UI");
@@ -450,13 +518,22 @@ namespace MangoHeist.UI
             le.flexibleWidth = 1f;
 
             var img = btnGo.AddComponent<Image>();
-            img.sprite = null;
-            img.color = bgColor;
+            if (btnSprite != null)
+            {
+                img.sprite = btnSprite;
+                img.type = Image.Type.Sliced;
+                img.color = Color.white;
+            }
+            else
+            {
+                img.sprite = null;
+                img.color = fallbackColor;
+            }
 
             var btn = btnGo.AddComponent<Button>();
             var colors = btn.colors;
-            colors.highlightedColor = bgColor * 1.15f;
-            colors.pressedColor = bgColor * 0.85f;
+            colors.highlightedColor = new Color(1.12f, 1.12f, 1.12f, 1f);
+            colors.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1f);
             btn.colors = colors;
 
             var txtGo = new GameObject("Text", typeof(RectTransform));
@@ -476,6 +553,10 @@ namespace MangoHeist.UI
             labelTmp.alignment = TextAlignmentOptions.Center;
             labelTmp.enableWordWrapping = false;
             labelTmp.overflowMode = TextOverflowModes.Overflow;
+
+            var shadow = txtGo.AddComponent<Shadow>();
+            shadow.effectColor = new Color32(0, 0, 0, 180);
+            shadow.effectDistance = new Vector2(1, -2);
 
             return btn;
         }
@@ -497,7 +578,7 @@ namespace MangoHeist.UI
                 var rt = _mainCardGo.GetComponent<RectTransform>();
                 if (rt != null)
                 {
-                    rt.sizeDelta = new Vector2(460, isRegister ? 640 : 540);
+                    rt.sizeDelta = new Vector2(490, isRegister ? 680 : 580);
                 }
             }
 
@@ -513,7 +594,7 @@ namespace MangoHeist.UI
 
             if (_subtitleText != null)
             {
-                _subtitleText.text = isRegister ? "MANGO HEIST - ĐĂNG KÝ TÀI KHOẢN MỚI" : "MANGO HEIST - HỆ THỐNG ĐĂNG NHẬP";
+                _subtitleText.text = isRegister ? "ĐĂNG KÝ TÀI KHOẢN MỚI" : "HỆ THỐNG ĐĂNG NHẬP";
             }
         }
 

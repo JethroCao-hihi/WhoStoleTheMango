@@ -155,15 +155,15 @@ namespace MangoHeist.UI
             }
 
             // ══════════════════════════════════════════════════════════════════
-            // TẢI TOÀN BỘ SPRITE ĐỒ HỌA THẬT TỪ THƯ MỤC RESOURCES/UI
+            // TẢI TOÀN BỘ SPRITE ĐỒ HỌA THẬT QUA HELPER BẢO ĐẢM LOAD CHUẨN XÁC
             // ══════════════════════════════════════════════════════════════════
-            var spBg = Resources.Load<Sprite>("UI/UI_Background_Garden");
-            var spTitle = Resources.Load<Sprite>("UI/UI_Title_Logo");
-            var spCard = Resources.Load<Sprite>("UI/UI_MainCard_BambooFrame");
-            var spSlot = Resources.Load<Sprite>("UI/UI_Input_Slot");
-            var spBtnGreen = Resources.Load<Sprite>("UI/UI_Btn_Green");
-            var spBtnBlue = Resources.Load<Sprite>("UI/UI_Btn_Blue");
-            var spBtnGrey = Resources.Load<Sprite>("UI/UI_Btn_Grey");
+            var spBg = LoadUISprite("UI_Background_Garden");
+            var spTitle = LoadUISprite("UI_Title_Logo");
+            var spCard = LoadUISprite("UI_MainCard_BambooFrame");
+            var spSlot = LoadUISprite("UI_Input_Slot");
+            var spBtnGreen = LoadUISprite("UI_Btn_Green");
+            var spBtnBlue = LoadUISprite("UI_Btn_Blue");
+            var spBtnGrey = LoadUISprite("UI_Btn_Grey");
 
             // 1. NỀN VƯỜN XOÀI FULL MÀN HÌNH
             _backgroundGo = new GameObject("Background", typeof(RectTransform));
@@ -330,9 +330,9 @@ namespace MangoHeist.UI
 
         private void BuildProfileCard()
         {
-            var spCard = Resources.Load<Sprite>("UI/UI_MainCard_BambooFrame");
-            var spBtnGreen = Resources.Load<Sprite>("UI/UI_Btn_Green");
-            var spBtnGrey = Resources.Load<Sprite>("UI/UI_Btn_Grey");
+            var spCard = LoadUISprite("UI_MainCard_BambooFrame");
+            var spBtnGreen = LoadUISprite("UI_Btn_Green");
+            var spBtnGrey = LoadUISprite("UI_Btn_Grey");
 
             int uiLayer = LayerMask.NameToLayer("UI");
             _profileCardGo = new GameObject("ProfileCard", typeof(RectTransform));
@@ -725,6 +725,21 @@ namespace MangoHeist.UI
             yield return new WaitForSeconds(duration);
             _toastPopupGo.SetActive(false);
             _toastCoroutine = null;
+        }
+
+        private static Sprite LoadUISprite(string assetName)
+        {
+#if UNITY_EDITOR
+            var sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"Assets/_Project/Textures/UI/{assetName}.png");
+            if (sp == null)
+                sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"Assets/_Project/Textures/UI/{assetName}.jpg");
+            if (sp == null)
+                sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"Assets/_Project/Resources/UI/{assetName}.png");
+            if (sp == null)
+                sp = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>($"Assets/_Project/Resources/UI/{assetName}.jpg");
+            if (sp != null) return sp;
+#endif
+            return Resources.Load<Sprite>($"UI/{assetName}");
         }
     }
 }

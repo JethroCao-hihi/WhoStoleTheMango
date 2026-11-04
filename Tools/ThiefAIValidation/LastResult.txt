@@ -1,0 +1,28 @@
+﻿THIEF_VALIDATION PASS editor setup and controller generation/idempotence
+THIEF_VALIDATION PASS finds tree, follows A*, harvests and records mangoes
+THIEF_VALIDATION PASS harvest reduces shared tree stock
+THIEF_VALIDATION PASS root suspends harvesting
+THIEF_VALIDATION PASS full inventory does not consume a mango
+THIEF_VALIDATION PASS sensed owner facing away selects real occluded cover
+THIEF_VALIDATION PASS nearby owner is distinct from confirmed detection
+THIEF_VALIDATION PASS hide waits out danger memory then returns to task
+THIEF_VALIDATION PASS LOS/FOV exposure confirms detection
+THIEF_VALIDATION PASS confirmed owner interrupts mission with flee
+THIEF_VALIDATION PASS escape increases threat separation
+THIEF_VALIDATION PASS removed owner does not strand flee state
+THIEF_VALIDATION PASS imported owner connects to demo navigation
+THIEF_VALIDATION PASS pursuing dog selects reachable tree and starts continuous climb
+THIEF_VALIDATION PASS climb temporarily owns movement and disables controller
+THIEF_VALIDATION PASS root pauses climb without teleporting
+THIEF_VALIDATION PASS climb completes at tree hide point
+THIEF_VALIDATION PASS perch lies outside actual 3D dog attack range
+THIEF_VALIDATION PASS tree rejects invalid reservation
+THIEF_VALIDATION PASS ground cancel cannot strand a perched character in Idle
+THIEF_VALIDATION PASS occupied landing postpones descent without crossing a character
+THIEF_VALIDATION PASS after dog disappears AI waits safely then descends
+THIEF_VALIDATION PASS descent restores collisions at ground
+THIEF_VALIDATION PASS a fresh pursuit can reuse climbing after descent
+THIEF_VALIDATION PASS destroyed tree triggers continuous cached descent even with a dog nearby
+THIEF_VALIDATION PASS tree destruction restores controller
+THIEF_VALIDATION PASS death cancels task and navigation
+THIEF_VALIDATION ALL PASSED: 26 assertions

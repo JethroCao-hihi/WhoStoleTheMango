@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Assets.Scripts.GameManager;
 using Fusion;
 using UnityEngine;
 
@@ -92,6 +93,8 @@ public class NetworkPlayerController : NetworkBehaviour
     private CharacterController characterController;
     private NetworkPlayerData playerData;
     private NetworkPlayerSoundState soundState;
+    private NetworkPlayerRoleState roleState;
+    private NetworkMatchState matchState;
     private float verticalVelocity;
     private float harvestElapsed;
     private float actionElapsed;
@@ -109,9 +112,9 @@ public class NetworkPlayerController : NetworkBehaviour
     public bool IsHarvestingForHUD => IsHarvesting;
     public bool IsSprintingForHUD => IsSprinting;
     public float MaxStaminaForHUD => maxStamina;
-    // This branch implements the thief character only. Role selection/owner logic belongs to another feature branch.
-    public bool IsThief => true;
-    public bool IsOwner => false; // Compatibility for older UI/scripts; this thief-only branch has no owner actions.
+    public NetworkPlayerTeam CurrentRole => roleState != null ? roleState.CurrentRole : NetworkPlayerTeam.Thief;
+    public bool IsThief => CurrentRole == NetworkPlayerTeam.Thief;
+    public bool IsOwner => CurrentRole == NetworkPlayerTeam.OrchardOwner;
 
     private void Awake()
     {
@@ -127,6 +130,8 @@ public class NetworkPlayerController : NetworkBehaviour
             playerData = GetComponent<NetworkPlayerData>();
         if (soundState == null)
             soundState = GetComponent<NetworkPlayerSoundState>();
+        if (roleState == null)
+            roleState = GetComponent<NetworkPlayerRoleState>();
     }
 
     private void CacheStandingColliderValues()
@@ -143,6 +148,7 @@ public class NetworkPlayerController : NetworkBehaviour
     {
         CacheComponents();
         CacheStandingColliderValues();
+        ResolveMatchState();
 
         if (Object.HasStateAuthority)
         {
@@ -164,6 +170,15 @@ public class NetworkPlayerController : NetworkBehaviour
             return;
 
         CacheComponents();
+        if (!IsGameplayPhaseActive())
+        {
+            PreviousButtons = GetInput(out NetworkPlayerInput inactiveInput)
+                ? inactiveInput.Buttons
+                : default;
+            ClearGameplayActionsWhileInactive();
+            return;
+        }
+
         float dt = Runner.DeltaTime;
         bool hasInput = GetInput(out NetworkPlayerInput input);
         NetworkButtons pressedButtons = default;
@@ -357,6 +372,60 @@ public class NetworkPlayerController : NetworkBehaviour
 
         UpdateFootstepNoise(moveDirection, dt);
         UpdateCoverState();
+    }
+
+    private void ResolveMatchState()
+    {
+        matchState = null;
+        if (Runner == null || !Runner.IsRunning)
+            return;
+
+        NetworkMatchState[] candidates = FindObjectsByType<NetworkMatchState>(FindObjectsSortMode.None);
+        foreach (NetworkMatchState candidate in candidates)
+        {
+            if (candidate == null || candidate.Runner != Runner || candidate.Object == null ||
+                !candidate.Object.IsValid)
+                continue;
+
+            if (matchState != null)
+            {
+                matchState = null;
+                return;
+            }
+
+            matchState = candidate;
+        }
+    }
+
+    private bool IsGameplayPhaseActive()
+    {
+        if (matchState == null || matchState.Runner != Runner || matchState.Object == null ||
+            !matchState.Object.IsValid)
+            ResolveMatchState();
+
+        return matchState != null && matchState.Runner == Runner &&
+               matchState.Object != null && matchState.Object.IsValid &&
+               matchState.Phase == NetworkMatchPhase.Playing;
+    }
+
+    private void ClearGameplayActionsWhileInactive()
+    {
+        PendingDropMangoRequest = false;
+        CancelHarvest();
+        currentActionTarget = null;
+        actionElapsed = 0f;
+        actionRequiresRelease = false;
+        IsRescuing = false;
+        InteractionProgress = 0f;
+        IsSprinting = false;
+        IsCrouching = false;
+        IsJumping = false;
+        IsClimbing = false;
+        IsOnTree = false;
+        IsClimbingDown = false;
+        verticalVelocity = -2f;
+        UpdateCoverState();
+        ApplyCharacterControllerState();
     }
 
     private Vector3 GetCameraRelativeMove(Vector2 move, float cameraYaw)
@@ -557,7 +626,7 @@ public class NetworkPlayerController : NetworkBehaviour
     // Integration hook for the owner/capture feature branch. This thief-only branch does not call it itself.
     public void ApplyCapturedState()
     {
-        if (Object == null || !Object.HasStateAuthority || IsCaptured)
+        if (Object == null || !Object.HasStateAuthority || !IsGameplayPhaseActive() || IsCaptured)
             return;
 
         IsCaptured = true;
@@ -579,7 +648,7 @@ public class NetworkPlayerController : NetworkBehaviour
 
     private void ReleaseFromCapture()
     {
-        if (Object == null || !Object.HasStateAuthority || !IsCaptured)
+        if (Object == null || !Object.HasStateAuthority || !IsGameplayPhaseActive() || !IsCaptured)
             return;
 
         IsCaptured = false;
@@ -608,9 +677,14 @@ public class NetworkPlayerController : NetworkBehaviour
             Vector2 spread = Random.insideUnitCircle * 0.45f;
             Vector3 dropPosition = transform.position + Vector3.up * 0.25f + new Vector3(spread.x, 0f, spread.y);
             Vector3 landingPosition = ResolveDroppedMangoLandingPosition(dropPosition);
-            if (!SpawnOneDroppedMango(dropPosition, landingPosition))
+            if (!SpawnOneDroppedMango(dropPosition, landingPosition, out NetworkObject droppedMango))
                 return;
-            playerData.MangoCount = Mathf.Max(0, playerData.MangoCount - 1);
+            if (!playerData.TryRemoveMangoForDrop())
+            {
+                Runner.Despawn(droppedMango);
+                Debug.LogError("[Mango Drop] Inventory changed before the drop could be committed; discarded the uncommitted item.", this);
+                return;
+            }
         }
     }
 
@@ -630,7 +704,8 @@ public class NetworkPlayerController : NetworkBehaviour
             return;
         }
 
-        playerData.MangoCount++;
+        if (!playerData.AddMango())
+            return;
         Debug.Log($"[Debug Mango] Đã cấp 1 quả để test Q. Inventory={playerData.MangoCount}", this);
     }
 #endif
@@ -654,17 +729,26 @@ public class NetworkPlayerController : NetworkBehaviour
         Vector3 landingPosition = ResolveDroppedMangoLandingPosition(landingProbe);
         Vector3 spawnPosition = transform.position + transform.forward * 0.35f + Vector3.up * 0.55f;
 
-        if (SpawnOneDroppedMango(spawnPosition, landingPosition))
+        if (SpawnOneDroppedMango(spawnPosition, landingPosition, out NetworkObject droppedMango))
         {
-            playerData.MangoCount = Mathf.Max(0, playerData.MangoCount - 1);
+            if (!playerData.TryRemoveMangoForDrop())
+            {
+                Runner.Despawn(droppedMango);
+                Debug.LogError("[Mango Drop] Inventory changed before the drop could be committed; discarded the uncommitted item.", this);
+                return;
+            }
             Debug.Log(
                 $"[Mango Drop] Đã thả 1 quả có hoạt ảnh. Start={spawnPosition} | " +
                 $"Landing={landingPosition} | Còn lại={playerData.MangoCount}.", this);
         }
     }
 
-    private bool SpawnOneDroppedMango(Vector3 spawnPosition, Vector3 landingPosition)
+    private bool SpawnOneDroppedMango(
+        Vector3 spawnPosition,
+        Vector3 landingPosition,
+        out NetworkObject dropped)
     {
+        dropped = null;
         if (droppedMangoPrefab == null)
         {
             Debug.LogError("[Mango Drop] Chưa gán Dropped Mango Prefab vào NetworkPlayerController.", this);
@@ -676,8 +760,8 @@ public class NetworkPlayerController : NetworkBehaviour
             return false;
         }
 
-        NetworkObject dropped = Runner.Spawn(droppedMangoPrefab, spawnPosition, Quaternion.identity);
-        if (dropped == null)
+        dropped = Runner.Spawn(droppedMangoPrefab, spawnPosition, Quaternion.identity);
+        if (dropped == null || !dropped.IsValid)
         {
             Debug.LogError("[Mango Drop] Fusion không spawn được Mango Prefab.", this);
             return false;
@@ -701,7 +785,14 @@ public class NetworkPlayerController : NetworkBehaviour
 
         // A mango dropped from the tree gets a little more airtime so players can see it fall.
         float duration = IsOnTree ? 0.9f : 0.55f;
-        droppedMarker.MarkDropped(landingPosition, duration);
+        if (!droppedMarker.MarkDropped(landingPosition, duration))
+        {
+            Runner.Despawn(dropped);
+            dropped = null;
+            Debug.LogError("[Mango Drop] The spawned mango could not enter its dropped state; inventory was not changed.", this);
+            return false;
+        }
+
         EmitNoise(PlayerNoiseType.MangoDrop, harvestNoiseRadius);
         Debug.Log($"[Mango Drop Debug] Spawned network mango {dropped.name}; start={spawnPosition}; land={landingPosition}; duration={duration:F2}s.", dropped);
         return true;
@@ -749,6 +840,9 @@ public class NetworkPlayerController : NetworkBehaviour
 
     private bool TryPickupDroppedMango()
     {
+        if (!IsThief)
+            return false;
+
         CacheComponents();
         if (playerData == null || playerData.MangoCount >= NetworkPlayerData.MaxMangoCount)
             return false;
@@ -849,7 +943,8 @@ public class NetworkPlayerController : NetworkBehaviour
 
     public void TryEnterWater(float waterSurfaceY)
     {
-        if (Object == null || !Object.HasStateAuthority || IsInWater || characterController == null)
+        if (Object == null || !Object.HasStateAuthority || !IsGameplayPhaseActive() ||
+            IsInWater || characterController == null)
             return;
 
         // Trigger volumes should include the water body below the surface. Enter only when the feet reach it.
@@ -866,6 +961,8 @@ public class NetworkPlayerController : NetworkBehaviour
 
     public void ExitWaterZone()
     {
+        // Always permit trigger cleanup so leaving water during a non-playing phase cannot
+        // leave the replicated movement modifier stuck for the next active phase.
         if (Object == null || !Object.HasStateAuthority || !IsInWater)
             return;
         IsInWater = false;
@@ -955,6 +1052,9 @@ public class NetworkPlayerController : NetworkBehaviour
 
     private bool TryStartHarvest()
     {
+        if (!IsThief)
+            return false;
+
         CacheComponents();
         if (playerData == null)
         {

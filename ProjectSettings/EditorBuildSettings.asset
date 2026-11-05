@@ -9,11 +9,14 @@ EditorBuildSettings:
     path: Assets/Scenes/LoginScene.unity
     guid: e7a922e4fe4fc634a8a47067ec33f919
   - enabled: 1
-    path: Assets/Scenes/NetworkingTest.unity
-    guid: 4b29cfe270d05534ba9f11e39bec248e
+    path: Assets/Scenes/MenuScene.unity
+    guid: 8fc0b6c78b274b7a9a7d16bd17d0a481
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/Scenes/LobbyScene.unity
+    guid: a2f8dbaebd1f44fa90caa9f3b8b4782c
+  - enabled: 1
+    path: Assets/Scenes/GameScene.unity
+    guid: a0f6cf69a84847e5a137fc5889dd0426
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

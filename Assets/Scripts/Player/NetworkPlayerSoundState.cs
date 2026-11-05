@@ -66,7 +66,8 @@ public class NetworkPlayerSoundState : NetworkBehaviour
 
     public void EmitNoise(PlayerNoiseType type, float radius)
     {
-        if (Object == null || !Object.HasStateAuthority || Runner == null || type == PlayerNoiseType.None)
+        if (Object == null || !Object.HasStateAuthority || Runner == null || type == PlayerNoiseType.None ||
+            !Assets.Scripts.GameManager.NetworkMatchState.IsRunnerInPlayingPhase(Runner))
             return;
 
         NoiseSequence++;

@@ -19,6 +19,10 @@ GameObject:
   - component: {fileID: 2672498010739759600}
   - component: {fileID: 6454598230376891208}
   - component: {fileID: 6949410136340256765}
+  - component: {fileID: -4239101090625058104}
+  - component: {fileID: -2605926498666170125}
+  - component: {fileID: -5100000000000000001}
+  - component: {fileID: -5013645668071552999}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -113,7 +117,7 @@ CapsuleCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
@@ -136,7 +140,7 @@ MonoBehaviour:
   SortKey: 2629443332
   SendPriority: 1
   EnableInterpolation: 1
-  Flags: 262402
+  Flags: 1310978
   NestedObjects: []
   NetworkedBehaviours:
   - {fileID: 5157055137683620896}
@@ -144,6 +148,7 @@ MonoBehaviour:
   - {fileID: 2672498010739759600}
   - {fileID: 6454598230376891208}
   - {fileID: 6949410136340256765}
+  - {fileID: -5100000000000000001}
   ForceRemoteRenderTimeframe: 0
 --- !u!114 &5157055137683620896
 MonoBehaviour:
@@ -311,9 +316,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerStaminaBar
   heightAbovePlayer: 2.25
-  canvasPixelSize: {x: 180, y: 22}
-  worldScale: 0.006
   showOnlyForLocalPlayer: 1
+  worldCanvas: {fileID: 0}
+  canvasRect: {fileID: 0}
+  backgroundImage: {fileID: 0}
+  fillImage: {fileID: 0}
   warningThreshold: 0.5
   criticalThreshold: 0.25
   highStaminaColor: {r: 0.2, g: 0.88, b: 0.28, a: 1}
@@ -345,3 +352,68 @@ MonoBehaviour:
   captureClip: {fileID: 0}
   _NoiseSequence: 0
   _LastNoiseTypeCode: 0
+--- !u!54 &-4239101090625058104
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3493781938159906001}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 0
+  m_IsKinematic: 1
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0
+--- !u!114 &-2605926498666170125
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3493781938159906001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 742cc003c381d5647904a43f4def1471, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ThiefCoverZone
+  showDebugLogs: 1
+--- !u!114 &-5100000000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3493781938159906001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: febee9f56e38fc248b3e32c296432044, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NetworkPlayerRoleState
+  startingRole: 0
+--- !u!114 &-5013645668071552999
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3493781938159906001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1199893898, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.NetworkRunner

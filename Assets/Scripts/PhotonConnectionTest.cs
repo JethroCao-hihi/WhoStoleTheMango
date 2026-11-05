@@ -340,10 +340,23 @@ public class PhotonConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
 
         if (playerObject != null)
         {
-            // This feature branch implements thief characters only. No Orchard Owner role is assigned here.
+            NetworkPlayerRoleState roleState = playerObject.GetComponent<NetworkPlayerRoleState>();
+            if (roleState == null)
+            {
+                Debug.LogError("[Photon] Player prefab thiếu NetworkPlayerRoleState; không thể gán vai trò.", playerObject);
+                return;
+            }
+
+            // This callback runs on the server only. The host's own PlayerRef is the Orchard Owner;
+            // every other joined player is a Thief. AssignRole enforces State Authority.
+            NetworkPlayerTeam role = player == currentRunner.LocalPlayer
+                ? NetworkPlayerTeam.OrchardOwner
+                : NetworkPlayerTeam.Thief;
+            roleState.AssignRole(role);
+
             Debug.Log(
                 $"[Photon] Spawned {player} | " +
-                $"Position={spawnPosition} | " +
+                $"Role={role} | Position={spawnPosition} | " +
                 $"Valid={playerObject.IsValid}"
             );
         }

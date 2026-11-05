@@ -1,0 +1,53 @@
+warning: in the working copy of 'Assets/Material/Ground.mat', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Assets/Material/Ground.mat.meta', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Assets/Prefabs/Player.prefab', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Assets/Scenes/LoginScene.unity', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Assets/Scripts/_Project/Scripts/Auth/AuthManager.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Assets/Scripts/_Project/Scripts/UI/LoginUIController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Packages/manifest.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Packages/packages-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ProjectSettings/EditorBuildSettings.asset', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ProjectSettings/ProjectSettings.asset', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ProjectSettings/QualitySettings.asset', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'ProjectSettings/UnityConnectSettings.asset', LF will be replaced by CRLF the next time Git touches it
+ Assets/Material/Ground.mat                         |   85 [32m+[m[31m-[m
+ Assets/Material/Ground.mat.meta                    |    4 [32m+[m[31m-[m
+ Assets/Prefabs/Player.prefab                       |   80 [32m+[m[31m-[m
+ Assets/Scenes/LoginScene.unity                     |   49 [32m+[m[31m-[m
+ Assets/Scenes/NetworkingTest.unity                 | 3643 [31m--------------------[m
+ Assets/Scenes/NetworkingTest.unity.meta            |    7 [31m-[m
+ Assets/Scenes/SampleScene.unity                    |  489 [31m---[m
+ Assets/Scenes/SampleScene.unity.meta               |    7 [31m-[m
+ Assets/Scripts/MangoTree/MangoDebug.cs             |   33 [31m-[m
+ Assets/Scripts/MangoTree/MangoDebug.cs.meta        |    2 [31m-[m
+ Assets/Scripts/MangoTree/MangoTree.cs              |  153 [32m+[m
+ .../Scripts/MangoTree/NetworkDroppedMangoMarker.cs |   11 [32m+[m[31m-[m
+ Assets/Scripts/MangoTree/NetworkMango.cs           |   19 [32m+[m[31m-[m
+ Assets/Scripts/PhotonConnectionTest.cs             |   17 [32m+[m[31m-[m
+ Assets/Scripts/Player/NetworkPlayerController.cs   |  130 [32m+[m[31m-[m
+ Assets/Scripts/Player/NetworkPlayerData.cs         |   31 [32m+[m[31m-[m
+ Assets/Scripts/Player/NetworkPlayerRoleState.cs    |   16 [32m+[m[31m-[m
+ Assets/Scripts/Player/NetworkPlayerSoundState.cs   |    3 [32m+[m[31m-[m
+ Assets/Scripts/Player/PlayerStaminaBar.cs          |  118 [32m+[m[31m-[m
+ Assets/Scripts/UGS_Backend_SmokeTest.meta          |    8 [31m-[m
+ Assets/Scripts/UGS_Backend_SmokeTest/README_VI.md  |   45 [31m-[m
+ .../UGS_Backend_SmokeTest/README_VI.md.meta        |    7 [31m-[m
+ .../UGS_Backend_SmokeTest/UGSBackendSmokeTest.cs   |  216 [31m--[m
+ .../UGSBackendSmokeTest.cs.meta                    |    2 [31m-[m
+ Assets/Scripts/Ui/PlayerHarvestHUD.cs              |  168 [32m+[m[31m-[m
+ .../Scripts/_Project/Scripts/Auth/AuthManager.cs   |    1 [31m-[m
+ .../_Project/Scripts/Data/SaveSystemTester.cs      |   75 [31m-[m
+ .../_Project/Scripts/Data/SaveSystemTester.cs.meta |    2 [31m-[m
+ .../_Project/Scripts/Data/SystemStressTester.cs    |  370 [31m--[m
+ .../Scripts/Data/SystemStressTester.cs.meta        |    2 [31m-[m
+ .../_Project/Scripts/UI/LoginUIController.cs       |  813 [32m++[m[31m---[m
+ .../_Project/Textures/LoginBackground_Concept.jpg  |  Bin [31m866919[m -> [32m0[m bytes
+ .../Textures/LoginBackground_Concept.jpg.meta      |  130 [31m-[m
+ Packages/manifest.json                             |    1 [32m+[m
+ Packages/packages-lock.json                        |   15 [32m+[m[31m-[m
+ ProjectSettings/EditorBuildSettings.asset          |   11 [32m+[m[31m-[m
+ ProjectSettings/ProjectSettings.asset              |    3 [32m+[m[31m-[m
+ ProjectSettings/QualitySettings.asset              |   15 [32m+[m[31m-[m
+ ProjectSettings/UnityConnectSettings.asset         |    2 [32m+[m[31m-[m
+ WhoStoleTheMango.slnx                              |    4 [32m+[m[31m-[m
+ 40 files changed, 913 insertions(+), 5874 deletions(-)

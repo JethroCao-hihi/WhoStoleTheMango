@@ -22,27 +22,61 @@ public class PlayerHarvestHUD : MonoBehaviour
     [SerializeField] private TMP_Text teamMangoProgressText;
 
     private float nextTeamProgressRefresh;
+    private float nextHintRefreshTime;
 
     private NetworkPlayerController localController;
     private NetworkPlayerData localPlayerData;
 
-    private float nextHintRefreshTime;
     private string currentHint = "";
+
+    private void Awake()
+    {
+        // Keep the scene-authored HUD visible when Fusion loads GameScene. Only
+        // gameplay-only prompts and the harvesting panel are hidden by Update.
+        Canvas hudCanvas = GetComponent<Canvas>();
+        if (hudCanvas != null)
+        {
+            hudCanvas.gameObject.SetActive(true);
+            hudCanvas.enabled = true;
+
+            for (Transform current = hudCanvas.transform; current != null; current = current.parent)
+            {
+                Vector3 scale = current.localScale;
+                if (Mathf.Abs(scale.x) < 0.0001f ||
+                    Mathf.Abs(scale.y) < 0.0001f ||
+                    Mathf.Abs(scale.z) < 0.0001f)
+                {
+                    current.localScale = Vector3.one;
+                }
+            }
+        }
+
+        if (mangoCountText != null)
+            mangoCountText.gameObject.SetActive(true);
+
+        if (teamMangoProgressText != null)
+            teamMangoProgressText.gameObject.SetActive(true);
+
+        ShowWaitingHUD();
+    }
 
     private void Update()
     {
-        if (localController == null || localPlayerData == null)
-            FindLocalPlayer();
-
-        if (localController == null || localPlayerData == null)
+        // Kiểm tra nhân vật hiện tại còn tồn tại và đã được Fusion spawn.
+        if (!IsLocalPlayerReady())
         {
-            if (mangoCountText != null)
-                mangoCountText.text = "Xoài: -- / 5";
+            localController = null;
+            localPlayerData = null;
 
-            if (harvestPanel != null)
-                harvestPanel.SetActive(false);
+            FindLocalPlayer();
+        }
 
-            SetInteractionHint("");
+        // Chưa có local player hợp lệ: không đọc Networked Properties.
+        if (!IsLocalPlayerReady())
+        {
+            ShowWaitingHUD();
+
+            RefreshTeamProgressIfNeeded();
             return;
         }
 
@@ -57,8 +91,7 @@ public class PlayerHarvestHUD : MonoBehaviour
         // Hiển thị tiến trình hái.
         bool isHarvesting = localController.IsHarvesting;
 
-        if (harvestPanel != null &&
-            harvestPanel.activeSelf != isHarvesting)
+        if (harvestPanel != null)
         {
             harvestPanel.SetActive(isHarvesting);
         }
@@ -88,15 +121,63 @@ public class PlayerHarvestHUD : MonoBehaviour
             UpdateInteractionHint();
         }
 
-        if (Time.unscaledTime >= nextTeamProgressRefresh)
-        {
-            nextTeamProgressRefresh = Time.unscaledTime + 0.25f;
-            UpdateTeamMangoProgress();
-        }
+        RefreshTeamProgressIfNeeded();
+    }
+
+    /// <summary>
+    /// Networked Properties chỉ được đọc khi NetworkObject đã hợp lệ.
+    /// Controller và PlayerData phải thuộc cùng một NetworkObject.
+    /// </summary>
+    private bool IsLocalPlayerReady()
+    {
+        if (localController == null || localPlayerData == null)
+            return false;
+
+        NetworkObject controllerObject =
+            localController.GetComponent<NetworkObject>();
+
+        NetworkObject dataObject =
+            localPlayerData.GetComponent<NetworkObject>();
+
+        return controllerObject != null &&
+               controllerObject.IsValid &&
+               controllerObject.HasInputAuthority &&
+               dataObject != null &&
+               dataObject.IsValid &&
+               dataObject == controllerObject;
+    }
+
+    private void ShowWaitingHUD()
+    {
+        if (mangoCountText != null)
+            mangoCountText.text = "Xoài: -- / 5";
+
+        if (harvestPanel != null)
+            harvestPanel.SetActive(false);
+
+        if (harvestSlider != null)
+            harvestSlider.value = 0f;
+
+        SetInteractionHint("");
+    }
+
+    private void RefreshTeamProgressIfNeeded()
+    {
+        if (Time.unscaledTime < nextTeamProgressRefresh)
+            return;
+
+        nextTeamProgressRefresh =
+            Time.unscaledTime + 0.25f;
+
+        UpdateTeamMangoProgress();
     }
 
     private void UpdateInteractionHint()
     {
+        // Hàm này chỉ được gọi sau khi IsLocalPlayerReady() thành công.
+        if (!IsLocalPlayerReady())
+            return;
+
         if (localController.IsClimbingForHUD)
         {
             SetInteractionHint("Đang leo cây...");
@@ -111,9 +192,8 @@ public class PlayerHarvestHUD : MonoBehaviour
 
         if (localController.IsOnTreeForHUD)
         {
-            NetworkPlayerData data = localPlayerData;
-
-            if (data.MangoCount >= NetworkPlayerData.MaxMangoCount)
+            if (localPlayerData.MangoCount >=
+                NetworkPlayerData.MaxMangoCount)
             {
                 SetInteractionHint("Túi đầy — E để leo xuống");
                 return;
@@ -139,12 +219,16 @@ public class PlayerHarvestHUD : MonoBehaviour
 
     private MangoTree FindNearestTree()
     {
+        if (!IsLocalPlayerReady())
+            return null;
+
         MangoTree[] trees =
             FindObjectsByType<MangoTree>(
                 FindObjectsSortMode.None
             );
 
         MangoTree nearest = null;
+
         float bestDistanceSquared =
             climbPromptRadius * climbPromptRadius;
 
@@ -173,18 +257,32 @@ public class PlayerHarvestHUD : MonoBehaviour
 
     private NetworkMango FindNearestMango()
     {
+        if (!IsLocalPlayerReady())
+            return null;
+
         NetworkMango[] mangoes =
             FindObjectsByType<NetworkMango>(
                 FindObjectsSortMode.None
             );
 
         NetworkMango nearest = null;
+
         float bestDistanceSquared =
             harvestPromptRadius * harvestPromptRadius;
 
         foreach (NetworkMango mango in mangoes)
         {
-            if (mango == null || !mango.CanBeCollected)
+            if (mango == null)
+                continue;
+
+            // Không đọc trạng thái network của xoài chưa spawn.
+            NetworkObject mangoObject =
+                mango.GetComponent<NetworkObject>();
+
+            if (mangoObject == null || !mangoObject.IsValid)
+                continue;
+
+            if (!mango.CanBeCollected)
                 continue;
 
             float distanceSquared =
@@ -216,7 +314,9 @@ public class PlayerHarvestHUD : MonoBehaviour
             NetworkObject networkObject =
                 player.GetComponent<NetworkObject>();
 
+            // Chờ Fusion hoàn tất việc spawn.
             if (networkObject == null ||
+                !networkObject.IsValid ||
                 !networkObject.HasInputAuthority)
             {
                 continue;
@@ -228,10 +328,24 @@ public class PlayerHarvestHUD : MonoBehaviour
             if (data == null)
                 continue;
 
+            NetworkObject dataObject =
+                data.GetComponent<NetworkObject>();
+
+            if (dataObject == null ||
+                !dataObject.IsValid ||
+                dataObject != networkObject)
+            {
+                continue;
+            }
+
             localController = player;
             localPlayerData = data;
 
-            Debug.Log("[HUD] Đã tìm thấy local player.", player);
+            Debug.Log(
+                "[HUD] Đã tìm thấy local player đã spawn.",
+                player
+            );
+
             return;
         }
     }
@@ -240,14 +354,19 @@ public class PlayerHarvestHUD : MonoBehaviour
     {
         if (interactionHintText == null ||
             currentHint == message)
+        {
             return;
+        }
 
         currentHint = message;
+
         interactionHintText.text = message;
+
         interactionHintText.gameObject.SetActive(
             !string.IsNullOrEmpty(message)
         );
     }
+
     private void UpdateTeamMangoProgress()
     {
         if (teamMangoProgressText == null)
@@ -263,6 +382,13 @@ public class PlayerHarvestHUD : MonoBehaviour
         foreach (NetworkPlayerData player in players)
         {
             if (player == null)
+                continue;
+
+            // Bỏ qua player prefab hoặc NetworkObject chưa spawn.
+            NetworkObject networkObject =
+                player.GetComponent<NetworkObject>();
+
+            if (networkObject == null || !networkObject.IsValid)
                 continue;
 
             totalDeposited += player.DepositedMangoCount;

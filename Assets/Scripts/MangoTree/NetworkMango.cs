@@ -1,4 +1,5 @@
 ﻿using Fusion;
+using Assets.Scripts.GameManager;
 using UnityEngine;
 
 public class NetworkMango : NetworkBehaviour
@@ -26,26 +27,28 @@ public class NetworkMango : NetworkBehaviour
         if (Object == null || !Object.IsValid)
             return false;
 
-        if (!Object.HasStateAuthority || IsCollected)
+        if (!Object.HasStateAuthority || IsCollected || !NetworkMatchState.IsRunnerInPlayingPhase(Runner))
             return false;
 
-        if (playerData == null)
+        if (playerData == null || playerData.Runner != Runner || playerData.Object == null ||
+            !playerData.Object.IsValid || !playerData.Object.HasStateAuthority)
         {
-            Debug.LogWarning("[Mango] Không tìm thấy NetworkPlayerData.", this);
+            Debug.LogWarning("[Mango] Player data is missing, invalid, or belongs to a different Runner.", this);
             return false;
         }
 
-        // Chỉ xóa xoài nếu người chơi thực sự nhận được xoài.
+        // Claim synchronously on State Authority before touching inventory so competing
+        // trigger/input paths cannot award the same mango twice in one simulation tick.
+        IsCollected = true;
         if (!playerData.AddMango())
         {
+            IsCollected = false;
             Debug.LogWarning(
-                "[Mango] Túi xoài đã đầy hoặc không thể cộng điểm.",
+                "[Mango] Inventory is full, the player role is invalid, or the gameplay phase is closed.",
                 this
             );
             return false;
         }
-
-        IsCollected = true;
 
         Debug.Log(
             $"[Mango] {playerData.name} đã hái được một quả.",

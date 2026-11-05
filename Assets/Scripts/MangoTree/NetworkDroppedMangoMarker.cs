@@ -43,10 +43,11 @@ public class NetworkDroppedMangoMarker : NetworkBehaviour
     }
 
     /// <summary>Begin a visible toss with an optional duration (longer when dropping from a tree).</summary>
-    public void MarkDropped(Vector3 landingPosition, float durationSeconds)
+    public bool MarkDropped(Vector3 landingPosition, float durationSeconds)
     {
-        if (Object == null || !Object.HasStateAuthority)
-            return;
+        if (Object == null || !Object.HasStateAuthority ||
+            !Assets.Scripts.GameManager.NetworkMatchState.IsRunnerInPlayingPhase(Runner))
+            return false;
 
         ActiveDropDuration = Mathf.Max(0.1f, durationSeconds);
         IsDropped = true;
@@ -60,6 +61,7 @@ public class NetworkDroppedMangoMarker : NetworkBehaviour
             transform.position = DropLandingPosition;
 
         Debug.Log($"[Mango Drop Animation] Start={DropStartPosition} | Landing={DropLandingPosition} | Animated={IsAnimatingDrop}", this);
+        return true;
     }
 
     // Compatibility overload for other scripts that only need to mark a mango as dropped.
@@ -70,7 +72,8 @@ public class NetworkDroppedMangoMarker : NetworkBehaviour
 
     public override void FixedUpdateNetwork()
     {
-        if (!Object.HasStateAuthority || !IsDropped || !IsAnimatingDrop)
+        if (!Object.HasStateAuthority || !IsDropped || !IsAnimatingDrop ||
+            !Assets.Scripts.GameManager.NetworkMatchState.IsRunnerInPlayingPhase(Runner))
             return;
 
         float duration = Mathf.Max(0.1f, ActiveDropDuration);

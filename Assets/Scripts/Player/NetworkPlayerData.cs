@@ -1,4 +1,5 @@
 ﻿using Fusion;
+using Assets.Scripts.GameManager;
 using UnityEngine;
 
 public class NetworkPlayerData : NetworkBehaviour
@@ -8,18 +9,18 @@ public class NetworkPlayerData : NetworkBehaviour
 
     // Số xoài đang mang trong túi.
     [Networked]
-    public int MangoCount { get; set; }
+    public int MangoCount { get; private set; }
 
     // Tổng số xoài người chơi này đã giao.
     [Networked]
-    public int DepositedMangoCount { get; set; }
+    public int DepositedMangoCount { get; private set; }
 
     public bool AddMango()
     {
         if (Object == null || !Object.IsValid)
             return false;
 
-        if (!Object.HasStateAuthority)
+        if (!CanChangeGameplayInventory() || !HasConfirmedThiefRole())
             return false;
 
         if (MangoCount >= MaxMangoCount)
@@ -35,13 +36,23 @@ public class NetworkPlayerData : NetworkBehaviour
         return true;
     }
 
+    /// <summary>Removes one carried mango only after an authoritative drop object was created.</summary>
+    public bool TryRemoveMangoForDrop()
+    {
+        if (!CanChangeGameplayInventory() || !HasConfirmedThiefRole() || MangoCount <= 0)
+            return false;
+
+        MangoCount--;
+        return true;
+    }
+
     public int DepositMangoes()
     {
         if (Object == null || !Object.IsValid)
             return 0;
 
         // Chỉ State Authority được phép cập nhật dữ liệu.
-        if (!Object.HasStateAuthority)
+        if (!CanChangeGameplayInventory() || !HasConfirmedThiefRole())
             return 0;
 
         if (MangoCount <= 0)
@@ -63,5 +74,15 @@ public class NetworkPlayerData : NetworkBehaviour
         );
 
         return amount;
+    }
+
+    private bool CanChangeGameplayInventory() =>
+        Object != null && Object.IsValid && Object.HasStateAuthority && Runner != null && Runner.IsRunning &&
+        NetworkMatchState.IsRunnerInPlayingPhase(Runner);
+
+    private bool HasConfirmedThiefRole()
+    {
+        NetworkPlayerRoleState roleState = GetComponent<NetworkPlayerRoleState>();
+        return roleState != null && roleState.IsRoleConfirmed && roleState.IsThief;
     }
 }

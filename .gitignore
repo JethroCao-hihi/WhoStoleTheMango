@@ -29,3 +29,5 @@ crashlytics-build.properties
 
 # Packed Unity files
 *.unitypackage
+# Local Unity account settings
+/setsResourcesUnityPlayerAccountSettings.asset

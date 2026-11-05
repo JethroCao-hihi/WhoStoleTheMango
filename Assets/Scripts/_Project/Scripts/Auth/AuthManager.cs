@@ -87,7 +87,6 @@ namespace MangoHeist.Auth
 
             _instance = this;
             if (Application.isPlaying) DontDestroyOnLoad(gameObject);
-            _ = WarmupServicesAsync();
         }
 
         // Giữ API cũ để các script khác không bị lỗi compile.

@@ -14,7 +14,7 @@ namespace MangoHeist.Networking
     [DisallowMultipleComponent]
     public sealed class PlayerSpawner : MonoBehaviour
     {
-        private const string PlayerPrefabPath = "Assets/Prefabs/Player.prefab";
+        [SerializeField] private string playerPrefabPath = "Assets/Prefabs/Player.prefab";
 
         // Five slots remain available for the official 5-player mode.
         // The 2-player Thief-only demo simply uses the first two slots.
@@ -45,16 +45,21 @@ namespace MangoHeist.Networking
             if (source == null || !source.IsRunning)
                 return FailInitialization("PlayerSpawner requires the active, running Lobby NetworkRunner.");
 
-            if (playerPrefab == null || !playerPrefab.IsSpawnable)
-                return FailInitialization("Player.prefab is missing or its Fusion NetworkObject is not spawnable.");
+            if (playerPrefab == null)
+                return FailInitialization(
+                    $"Player prefab reference is empty. Assign the NetworkObject prefab in PlayerSpawner. Expected asset path: {playerPrefabPath}");
+
+            if (!playerPrefab.IsSpawnable)
+                return FailInitialization(
+                    $"Player prefab '{playerPrefab.name}' is not spawnable. Add NetworkObject, register the prefab in the active Fusion NetworkPrefabTable, and verify the prefab reference.");
 
             if (source.Prefabs == null)
                 return FailInitialization("The active NetworkRunner has no Fusion NetworkPrefabTable.");
 
             // Check the runtime table used by this Runner; a NetworkObject component or label alone is insufficient.
-            NetworkPrefabId prefabId = source.Prefabs.GetId(PlayerPrefabPath);
+            NetworkPrefabId prefabId = source.Prefabs.GetId(playerPrefabPath);
             if (!prefabId.IsValid)
-                return FailInitialization($"{PlayerPrefabPath} is not registered in the active Fusion NetworkPrefabTable.");
+                return FailInitialization($"{playerPrefabPath} is not registered in the active Fusion NetworkPrefabTable.");
 
             if (runner != null && runner != source)
                 return FailInitialization("PlayerSpawner is already bound to a different NetworkRunner.");
@@ -317,7 +322,7 @@ namespace MangoHeist.Networking
 
         private static bool IsValidRole(NetworkPlayerTeam role) =>
             role == NetworkPlayerTeam.Thief ||
-            (!PhotonLobbyManager.UseTwoPlayerDemo && role == NetworkPlayerTeam.OrchardOwner);
+            role == NetworkPlayerTeam.OrchardOwner;
 
         private int FindFreeSpawnSlot()
         {

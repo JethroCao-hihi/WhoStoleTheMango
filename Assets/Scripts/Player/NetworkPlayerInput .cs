@@ -11,7 +11,10 @@ public enum PlayerInputButton
     Crouch = 4,   // Ctrl: crouch/hide
     DropMango = 5,// Q: drop one carried mango
     Rescue = 6,   // R: hold to rescue a captured teammate
-    DebugGiveMango = 7 // Editor-only helper: G grants one mango for testing Q
+    DebugGiveMango = 7, // Editor-only helper: G grants one mango for testing Q
+    GardenTrap = 8,
+    GardenDog = 9,
+    GardenSlipper = 10
 }
 
 public struct NetworkPlayerInput : INetworkInput

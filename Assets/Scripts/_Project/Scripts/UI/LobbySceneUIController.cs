@@ -29,6 +29,16 @@ namespace MangoHeist.UI
         private void Awake()
         {
             lobbyManager = PhotonLobbyManager.EnsureInstance();
+
+            if (leaveRoomButton != null &&
+                (leaveRoomButton == chooseOwnerButton || leaveRoomButton == chooseThiefButton))
+            {
+                Debug.LogError(
+                    "LobbySceneUIController: Leave Room Button is assigned to a role button. " +
+                    "Clear Leave Room Button and assign the actual leave button in the Inspector.", this);
+                leaveRoomButton = null;
+            }
+
             if (roleSelectionPanel != null)
                 roleSelectionPanel.SetActive(false); // Mặc định ẩn bảng chọn phe lúc đầu
         }
@@ -42,21 +52,12 @@ namespace MangoHeist.UI
                 lobbyManager.Changed += Refresh;
 
             // Đăng ký sự kiện nút bấm
-            AddListener(openRolePanelButton, () => ToggleRolePanel(true));
-            AddListener(closeRolePanelButton, () => ToggleRolePanel(false));
-
-            AddListener(chooseThiefButton, () => {
-                lobbyManager.RequestRoleSelection(NetworkPlayerTeam.Thief);
-                ToggleRolePanel(false);
-            });
-
-            AddListener(chooseOwnerButton, () => {
-                lobbyManager.RequestRoleSelection(NetworkPlayerTeam.OrchardOwner);
-                ToggleRolePanel(false);
-            });
-
-            AddListener(startGameButton, () => lobbyManager.StartGame());
-            AddListener(leaveRoomButton, () => _ = lobbyManager.LeaveAndReturnToMenuAsync());
+            AddListener(openRolePanelButton, OpenRolePanel);
+            AddListener(closeRolePanelButton, CloseRolePanel);
+            AddListener(chooseThiefButton, ChooseThief);
+            AddListener(chooseOwnerButton, ChooseOwner);
+            AddListener(startGameButton, StartGame);
+            AddListener(leaveRoomButton, LeaveRoom);
 
             Refresh();
         }
@@ -66,12 +67,41 @@ namespace MangoHeist.UI
             if (lobbyManager != null)
                 lobbyManager.Changed -= Refresh;
 
-            RemoveListener(openRolePanelButton, () => ToggleRolePanel(true));
-            RemoveListener(closeRolePanelButton, () => ToggleRolePanel(false));
-            RemoveListener(chooseThiefButton, null);
-            RemoveListener(chooseOwnerButton, null);
-            RemoveListener(startGameButton, () => lobbyManager.StartGame());
-            RemoveListener(leaveRoomButton, () => _ = lobbyManager.LeaveAndReturnToMenuAsync());
+            RemoveListener(openRolePanelButton, OpenRolePanel);
+            RemoveListener(closeRolePanelButton, CloseRolePanel);
+            RemoveListener(chooseThiefButton, ChooseThief);
+            RemoveListener(chooseOwnerButton, ChooseOwner);
+            RemoveListener(startGameButton, StartGame);
+            RemoveListener(leaveRoomButton, LeaveRoom);
+        }
+
+        private void OpenRolePanel() => ToggleRolePanel(true);
+        private void CloseRolePanel() => ToggleRolePanel(false);
+
+        public void ChooseThief()
+        {
+            if (lobbyManager == null) return;
+            lobbyManager.RequestRoleSelection(NetworkPlayerTeam.Thief);
+            ToggleRolePanel(false);
+        }
+
+        public void ChooseOwner()
+        {
+            if (lobbyManager == null) return;
+            lobbyManager.RequestRoleSelection(NetworkPlayerTeam.OrchardOwner);
+            ToggleRolePanel(false);
+        }
+
+        private void StartGame()
+        {
+            if (lobbyManager != null)
+                lobbyManager.StartGame();
+        }
+
+        private void LeaveRoom()
+        {
+            if (lobbyManager != null)
+                _ = lobbyManager.LeaveAndReturnToMenuAsync();
         }
 
         private void ToggleRolePanel(bool isOpen)

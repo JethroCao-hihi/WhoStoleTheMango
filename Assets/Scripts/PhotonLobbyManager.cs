@@ -32,12 +32,12 @@ namespace MangoHeist.Networking
         public const int MaximumPlayers = 5;
         private const int MaximumThieves = 4;
 
-        // TEMPORARY DEMO SWITCH: true = 2 Thieves and no OrchardOwner; false = official 1 Owner + 4 Thieves.
+        // TEMPORARY DEMO SWITCH: true = 1 OrchardOwner + 1 Thief; false = official 1 Owner + 4 Thieves.
         // Build Host and Client from the same setting so both peers use the same roster rules.
         public const bool UseTwoPlayerDemo = true;
 
-        public static int RequiredOwners => UseTwoPlayerDemo ? 0 : 1;
-        public static int RequiredThieves => UseTwoPlayerDemo ? 2 : MaximumThieves;
+        public static int RequiredOwners => 1;
+        public static int RequiredThieves => UseTwoPlayerDemo ? 1 : MaximumThieves;
         public static int RequiredPlayers => RequiredOwners + RequiredThieves;
         public static int RoomCapacity => RequiredPlayers;
         private const float MatchReadinessTimeoutSeconds = 30f;
@@ -134,13 +134,16 @@ namespace MangoHeist.Networking
         private bool pendingJump;
         private bool pendingDropMango;
         private bool pendingDebugGiveMango;
+        private bool pendingGardenTrap;
+        private bool pendingGardenDog;
+        private bool pendingGardenSlipper;
         private bool sprintHeld;
         private bool crouchHeld;
         private bool rescueHeld;
         private Vector2 cachedMove;
         private bool roleRequestPending;
         private string roleSelectionMessage = UseTwoPlayerDemo
-            ? "Choose Thief. This demo uses the Thief role only."
+            ? "Choose OrchardOwner or Thief. The 2-player demo requires one of each."
             : "Choose a role. The Host must confirm your selection.";
 
         public static PhotonLobbyManager Existing => instance;
@@ -225,6 +228,9 @@ namespace MangoHeist.Networking
                     if (keyboard.fKey.wasPressedThisFrame) pendingHarvest = true;
                     if (keyboard.spaceKey.wasPressedThisFrame) pendingJump = true;
                     if (keyboard.qKey.wasPressedThisFrame) pendingDropMango = true;
+                    if (keyboard.qKey.wasPressedThisFrame) pendingGardenTrap = true;
+                    if (keyboard.eKey.wasPressedThisFrame) pendingGardenDog = true;
+                    if (keyboard.rKey.wasPressedThisFrame) pendingGardenSlipper = true;
 #if UNITY_EDITOR
                     if (keyboard.gKey.wasPressedThisFrame) pendingDebugGiveMango = true;
 #endif
@@ -258,6 +264,9 @@ namespace MangoHeist.Networking
             pendingJump = false;
             pendingDropMango = false;
             pendingDebugGiveMango = false;
+            pendingGardenTrap = false;
+            pendingGardenDog = false;
+            pendingGardenSlipper = false;
             sprintHeld = false;
             crouchHeld = false;
             rescueHeld = false;
@@ -649,8 +658,17 @@ namespace MangoHeist.Networking
                 RoomCode = string.Empty;
                 startGameRequested = false;
                 ClearPlayers();
-                if (wasInGameScene || SceneManager.GetActiveScene().name == LobbySceneName)
+                // Keep the Lobby visible after an unexpected disconnect so the user can see
+                // the actual failure and start a new session. Explicit Leave still uses
+                // LeaveCoreAsync and intentionally returns to Menu.
+                if (wasInGameScene)
                     SceneManager.LoadScene(MenuSceneName);
+                else if (SceneManager.GetActiveScene().name == LobbySceneName)
+                {
+                    SetState(PhotonLobbyState.Error,
+                        callbackFailure ?? "Photon disconnected while the role roster was being updated.");
+                    Changed?.Invoke();
+                }
             }
             catch (Exception exception)
             {
@@ -729,9 +747,6 @@ namespace MangoHeist.Networking
 
         private string GetOwnerSlotStatus()
         {
-            if (UseTwoPlayerDemo)
-                return "OrchardOwner role is not used in Thief-only demo";
-
             if (runner == null || !runner.IsRunning)
                 return "OrchardOwner slot: open";
 
@@ -888,8 +903,6 @@ namespace MangoHeist.Networking
 
                 if (roleCode == (byte)NetworkPlayerTeam.OrchardOwner)
                 {
-                    if (UseTwoPlayerDemo)
-                        return;
                     ownerCount++;
                     nextRoster.Add(player, NetworkPlayerTeam.OrchardOwner);
                 }
@@ -945,11 +958,11 @@ namespace MangoHeist.Networking
 
         private static bool IsValidRole(NetworkPlayerTeam role) =>
             role == NetworkPlayerTeam.Thief ||
-            (!UseTwoPlayerDemo && role == NetworkPlayerTeam.OrchardOwner);
+            role == NetworkPlayerTeam.OrchardOwner;
 
         private static string GetRequiredRosterDescription() =>
             UseTwoPlayerDemo
-                ? $"assign exactly {RequiredThieves} Thief players (Thief-only demo)."
+                ? "assign exactly one OrchardOwner and one Thief player."
                 : $"assign exactly one OrchardOwner and {RequiredThieves} Thieves.";
 
         public static string GetRequiredRosterDescriptionForDiagnostics() => GetRequiredRosterDescription();
@@ -964,7 +977,7 @@ namespace MangoHeist.Networking
 
             if (status == RoleRequestStatus.Snapshot)
                 return UseTwoPlayerDemo
-                    ? "Choose Thief. This demo uses the Thief role only."
+                    ? "Choose OrchardOwner or Thief. The 2-player demo requires one of each."
                     : "Choose a role. The Host must confirm your selection.";
 
             return rejection switch
@@ -984,7 +997,7 @@ namespace MangoHeist.Networking
             acceptedRoleRoster.Clear();
             roleRequestPending = false;
             roleSelectionMessage = UseTwoPlayerDemo
-                ? "Choose Thief. This demo uses the Thief role only."
+                ? "Choose OrchardOwner or Thief. The 2-player demo requires one of each."
                 : "Choose a role. The Host must confirm your selection.";
         }
 
@@ -1834,6 +1847,9 @@ namespace MangoHeist.Networking
             buttons.Set(PlayerInputButton.Crouch, crouchHeld);
             buttons.Set(PlayerInputButton.Rescue, rescueHeld);
             buttons.Set(PlayerInputButton.DebugGiveMango, pendingDebugGiveMango);
+            buttons.Set(PlayerInputButton.GardenTrap, pendingGardenTrap);
+            buttons.Set(PlayerInputButton.GardenDog, pendingGardenDog);
+            buttons.Set(PlayerInputButton.GardenSlipper, pendingGardenSlipper);
 
             input.Set(new NetworkPlayerInput
             {
@@ -1848,6 +1864,9 @@ namespace MangoHeist.Networking
             pendingJump = false;
             pendingDropMango = false;
             pendingDebugGiveMango = false;
+            pendingGardenTrap = false;
+            pendingGardenDog = false;
+            pendingGardenSlipper = false;
         }
         public void OnInputMissing(NetworkRunner currentRunner, PlayerRef player, NetworkInput input) { }
         public void OnConnectRequest(NetworkRunner currentRunner, NetworkRunnerCallbackArgs.ConnectRequest request, byte[] token)

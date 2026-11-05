@@ -114,7 +114,7 @@ namespace MangoHeist.UI
                 return;
 
             hostRoomInfoText.text = PhotonLobbyManager.UseTwoPlayerDemo
-                ? "Map: Mango Orchard\nMaximum players: 2\nMode: Thief-only demo"
+                ? "Map: Mango Orchard\nMaximum players: 2\nMode: 1 OrchardOwner + 1 Thief"
                 : "Map: Mango Orchard\nMaximum players: 5\nMode: 1 OrchardOwner + 4 Thieves";
         }
 

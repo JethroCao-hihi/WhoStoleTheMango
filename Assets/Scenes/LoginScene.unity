@@ -1887,7 +1887,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &629764845
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2087,6 +2087,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 77eebc9f0275d7e49a3d78ebafc11a1b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  mainCard: {fileID: 0}
+  profileCard: {fileID: 0}
+  toastPopup: {fileID: 0}
+  emailRow: {fileID: 0}
+  confirmPasswordRow: {fileID: 0}
+  usernameInput: {fileID: 0}
+  emailInput: {fileID: 0}
+  passwordInput: {fileID: 0}
+  confirmPasswordInput: {fileID: 0}
+  submitButton: {fileID: 0}
+  guestButton: {fileID: 0}
+  switchModeButton: {fileID: 0}
+  playButton: {fileID: 0}
+  logoutButton: {fileID: 0}
+  subtitleText: {fileID: 0}
+  submitButtonLabel: {fileID: 0}
+  switchModeButtonLabel: {fileID: 0}
+  toastText: {fileID: 0}
 --- !u!114 &808981732
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2160,7 +2178,7 @@ RectTransform:
   m_GameObject: {fileID: 808981730}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0, y: 0, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1214943510}
@@ -3334,7 +3352,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1232647585
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3342,7 +3360,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1232647584}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b85cece42d3bdfd4a9db716e5a5e5dc1, type: 3}
   m_Name: 
@@ -3392,8 +3410,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8ce8f681d5f66594185db062bd1702c4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MangoHeist.Data.SaveSystemTester
-  _mapToUnlock: map_02_vuon_cat_chu
-  _coinsToAdd: 50
 --- !u!1 &1285989145
 GameObject:
   m_ObjectHideFlags: 0

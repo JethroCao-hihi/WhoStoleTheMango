@@ -3,7 +3,7 @@ using Assets.Scripts.GameManager;
 using Fusion;
 using UnityEngine;
 
-[RequireComponent(typeof(CharacterController))]
+[RequireComponent(typeof(CharacterController), typeof(GardenPlayer))]
 public class NetworkPlayerController : NetworkBehaviour
 {
     [Header("Thief movement - GDD")]
@@ -95,6 +95,7 @@ public class NetworkPlayerController : NetworkBehaviour
     private NetworkPlayerSoundState soundState;
     private NetworkPlayerRoleState roleState;
     private NetworkMatchState matchState;
+    private GardenPlayer gardenPlayer;
     private float verticalVelocity;
     private float harvestElapsed;
     private float actionElapsed;
@@ -132,6 +133,8 @@ public class NetworkPlayerController : NetworkBehaviour
             soundState = GetComponent<NetworkPlayerSoundState>();
         if (roleState == null)
             roleState = GetComponent<NetworkPlayerRoleState>();
+        if (gardenPlayer == null)
+            gardenPlayer = GetComponent<GardenPlayer>();
     }
 
     private void CacheStandingColliderValues()
@@ -187,6 +190,15 @@ public class NetworkPlayerController : NetworkBehaviour
         {
             pressedButtons = input.Buttons.GetPressed(PreviousButtons);
             PreviousButtons = input.Buttons;
+        }
+
+        if (gardenPlayer != null && !gardenPlayer.CanMove)
+        {
+            IsSprinting = false;
+            IsCrouching = false;
+            IsRescuing = false;
+            InteractionProgress = 0f;
+            return;
         }
 
         bool interactPressed = pressedButtons.IsSet(PlayerInputButton.Interact);

@@ -745,7 +745,7 @@ GameObject:
   - component: {fileID: 333218399}
   - component: {fileID: 333218398}
   - component: {fileID: 333218397}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Plane
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1844,6 +1844,7 @@ GameObject:
   - component: {fileID: 974340267}
   - component: {fileID: 974340266}
   - component: {fileID: 974340265}
+  - component: {fileID: 974340268}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -1863,7 +1864,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 58a4744db224aac4ab783f869232934e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameSceneController
-  playerSpawner: {fileID: 0}
 --- !u!114 &974340266
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1876,7 +1876,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b477b24c6a2244ba9a0f18b5201a314e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::MangoHeist.Networking.PlayerSpawner
-  playerPrefab: {fileID: 2489922129952311762, guid: 30c9926eb4335df4eb7c721147159246, type: 3}
+  playerPrefabPath: Assets/Prefabs/Player.prefab
+  playerPrefab: {fileID: 3280534344827864649, guid: 2d48c828e8c3cd3479888f3f4b9f55a4, type: 3}
 --- !u!4 &974340267
 Transform:
   m_ObjectHideFlags: 0
@@ -1892,6 +1893,26 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &974340268
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 974340264}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: -1552182283, guid: e725a070cec140c4caffb81624c8c787, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Fusion.Runtime.dll::Fusion.NetworkObject
+  SortKey: 310457490
+  SendPriority: 1
+  EnableInterpolation: 1
+  Flags: 262146
+  NestedObjects: []
+  NetworkedBehaviours:
+  - {fileID: 974340265}
+  ForceRemoteRenderTimeframe: 0
 --- !u!1 &1372778935
 GameObject:
   m_ObjectHideFlags: 0
